@@ -85,11 +85,13 @@ class IrSystem:
         if self._index is None:
             self._index = self._temp_idx
         else:
+            assert self._temp_idx is not None
             self._index.merge(self._temp_idx)
 
         if self._biword is None:
             self._biword = self._temp_biword
         else:
+            assert self._temp_biword is not None
             self._biword.merge(self._temp_biword)
 
         self._temp_idx = None
@@ -125,6 +127,7 @@ class IrSystem:
                     else:  # effettua il NOT (AND NOT)
                         stack.append(left.negation(right))
             else:  # aggiungi una PostingsList da processare allo stack
+                assert self._index is not None
                 base = self._index.btree.get(
                     token, PostingsList.from_postings_list([]))
                 aux = self._temp_idx.btree.get(token, PostingsList.from_postings_list(
@@ -169,6 +172,7 @@ class IrSystem:
         postings = []
         # cerca le biword nel biword index
         for biword in biword_query:
+            assert self._biword is not None
             base = self._biword.btree.get(
                 biword, PostingsList.from_postings_list([]))
             aux = self._temp_biword.btree.get(biword, PostingsList.from_postings_list(
@@ -183,7 +187,7 @@ class IrSystem:
         with open(filepath, 'w') as f:
             json.dump(self._invalid_vec, f)
 
-    def load_invalid_vec(self, filepath: str) -> list[int]:
+    def load_invalid_vec(self, filepath: str) -> None:
         with open(filepath, 'r') as f:
             invalid_vec = json.load(f)
         self._invalid_vec = invalid_vec
@@ -196,14 +200,16 @@ class IrSystem:
         os.makedirs(filepath, exist_ok=True)
 
         # Salvataggio dei file nella cartella
+        assert self._index is not None
         self._index.save_index(os.path.join(filepath, "index.pkl"))
+        assert self._biword is not None
         self._biword.save_index(os.path.join(filepath, "biword.pkl"))
         self.save_invalid_vec(os.path.join(
             filepath, "invalidation_bit_vector.json"))
 
         print(f"Indexes saved on disk, in the folder: '{filepath}'")
 
-    def load_index_from_disk(self, filepath: Optional[str] = None) -> 'IrSystem':
+    def load_index_from_disk(self, filepath: Optional[str] = None) -> None:
         if filepath is None:
             filepath = "index_files"  # cartella di default
 
