@@ -66,8 +66,8 @@ def help_menu():
 def load_index():
     print("wait...")
     corpus = read_movie_description(
-        '/Users/gabriele/Desktop/data/movie.metadata.tsv',
-        '/Users/gabriele/Desktop/data/plot_summaries.txt'
+        'data/movie.metadata.tsv',
+        'data/plot_summaries.txt'
     )
     ir = IrSystem(corpus)
     try:
@@ -90,8 +90,8 @@ def load_index():
 def build_index():
     print("wait...")
     corpus = read_movie_description(
-        '/Users/gabriele/Desktop/data/movie.metadata.tsv',
-        '/Users/gabriele/Desktop/data/plot_summaries.txt'
+        'data/movie.metadata.tsv',
+        'data/plot_summaries.txt'
     )
     ir = IrSystem.from_corpus(corpus)
     answer = input(
