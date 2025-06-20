@@ -50,6 +50,7 @@ class IrSystem:
         self.max_size_aux += len(corpus)
         # aggiorna l'invalidation bit vector
         self._invalid_vec += [0] * len(corpus)
+        self._corpus += corpus
         return self
 
     # Merge dell'indice ausilario con l'InvertedIndex
