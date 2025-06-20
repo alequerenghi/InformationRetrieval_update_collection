@@ -42,3 +42,6 @@ Phrase queries are performed by adding `"` at the end and at the beginning of th
 Operators are applied from left to right. `AND`s do not have precedence over `OR`s (e.g. "_dog OR cat AND water_" -> "_(dog OR cat) AND water_").  
 `NOT` operator corresponds to `AND NOT` meaning that "_a NOT b_" `-> a - b`.  
 Since **stop words are filtered out** by the system, it is advised to not include them in regular queries but to **perform phrase queries instead**.
+
+## Contributors
+This project comes from the combined work of Cristina Visentin, Gabriele Tomai and Alessandro Querenghi.
