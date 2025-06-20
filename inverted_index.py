@@ -1,4 +1,4 @@
-from postings_list import PostingList
+from postings_list import PostingsList
 
 from tqdm import tqdm
 from BTrees.OOBTree import OOBTree
