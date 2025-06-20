@@ -31,6 +31,7 @@ def load_index():
         risposta = input("Indice non trovato. Vuoi creare l'indice da zero? (y/n): ").strip().lower()
         if risposta == 'y':
             ir = IrSystem.from_corpus(corpus)
+            ir.save_index_to_disk()
             print("Indice creato da zero.")
         else:
             print("Uscita dalla funzione senza creare l'indice.")
@@ -48,7 +49,7 @@ def build_index():
 
 def search(query: str, ir: IrSystem):
     if ir is None:
-        print("Indice non caricato. Esegui 'build index' prima.")
+        print("Indice non caricato. Esegui 'build index' o 'load index' prima.")
         return
     print(f"Eseguo la ricerca per: '{query}'")
     if query.startswith('"') and query.endswith('"'):
@@ -104,13 +105,17 @@ def main():
             continue
 
         command = user_input.lower()
-        if command in command_map or command == "ld":
-            if command == "load index" or command == "ld":
-                ir = load_index()  # aggiorna ir
-            else:
+        if command == "load index" or command == "ld":
+            ir = load_index()  # aggiorna ir
+        elif command == "build index":
+                ir = build_index()  # aggiorna ir
+        else:
+                if ir is None:
+                    print("Indice non caricato. Esegui 'build index' o 'load index' prima.")
+                    continue
                 command_map[command]()  # esegue la funzione senza ritorno
 
-            if command == "esci":
+        if command == "esci":
                 break
         else:
             print(f"Comando sconosciuto: '{user_input}'")
