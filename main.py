@@ -19,43 +19,66 @@ def add_document(ir: IrSystem):
     ir.add_docs(corpus_single)
     print("added")
 
-def delete_document(query: str, ir: IrSystem):
-    ids = set()
-    valid_ranges = []
-
-    for part in query.split(","):
+def delete_documents(doc_ids: str, ir: IrSystem) -> None:
+    ids_to_delete = set()
+    
+    for part in doc_ids.split(","):
         part = part.strip()
+        
+        # Handle range (e.g., '10-15')
         if "-" in part:
             try:
                 start, end = map(int, part.split("-"))
-                if start <= end:
-                    ids.update(range(start, end + 1))
-                    valid_ranges.append((start, end))
-                else:
-                    print(f"Invalid range (start > end): {part}")
+                if start > end:
+                    print(f"Error: Invalid range {part} (start > end)")
+                    continue
+                # Note: range(start, end) goes from start to end-1
+                ids_to_delete.update(range(start, end + 1))  # +1 to include end
             except ValueError:
-                print(f"Invalid range: {part}")
+                print(f"Error: Invalid range format '{part}'")
+        
+        # Handle single number
         else:
             try:
-                single_id = int(part)
-                ids.add(single_id)
+                doc_id = int(part)
+                ids_to_delete.add(doc_id)
             except ValueError:
-                print(f"Invalid ID: {part}")
-
-    if ids:
-        ir.delete_docs(sorted(ids))
-        if len(valid_ranges) == 1 and len(ids) == (valid_ranges[0][1] - valid_ranges[0][0] + 1):
-            start, end = valid_ranges[0]
-            print(f"Deleted documents: from {start} to {end}")
-        else:
-            print(f"Deleted documents: {sorted(ids)}")
-        number_of_docs(ir)
+                print(f"Error: Invalid document ID '{part}'")
+    
+    if not ids_to_delete:
+        print("No valid document IDs to delete")
+        return
+    
+    # Convert to sorted list and delete
+    ids_list = sorted(ids_to_delete)
+    ir.delete_docs(ids_list)
+    
+    # Print summary
+    if len(ids_list) == 1:
+        print(f"Deleted document: {ids_list[0]}")
     else:
-        print("No valid ID provided.")
+        # Find consecutive ranges for cleaner output
+        ranges = []
+        start = ids_list[0]
+        prev = start
+        
+        for doc_id in ids_list[1:]:
+            if doc_id != prev + 1:
+                ranges.append((start, prev))
+                start = doc_id
+            prev = doc_id
+        ranges.append((start, prev))
+        
+        # Format output
+        range_strings = [f"{s}-{e}" if s != e else str(s) for s, e in ranges]
+        print(f"Deleted documents: {', '.join(range_strings)}")
 
-def number_of_docs(ir: IrSystem):
-    count = ir._invalid_vec.count(0)
-    print(f"Remaining documents: {count}")
+    # Print remaining count
+    remaining = len([x for x in ir._invalid_vec if x == 0])
+    print(f"Remaining documents: {remaining}")
+    print(f"Index size (number of unique terms): {ir._index.__len__()}")
+
+
 
 def help_menu():
     print("Available commands:")
@@ -63,7 +86,7 @@ def help_menu():
     print(" - search <query>")
     print(' - search "quoted phrase"')
     print(" - len <query>")
-    print(" - del <doc_id(s)> (e.g. del 1,3-5)")
+    print(" - del <doc_id(s)> (e.g. 'del 1,3' or 'del 1-5')")
     print(" - add")
     print(" - build index (or bi)")
     print(" - load index (or li)")
@@ -169,6 +192,11 @@ def main():
             else:
                 print("You must specify a string after 'search'.")
 
+        elif cmd == "len index":
+            if ir is None:
+                continue
+            print(f"Index size (number of unique terms): {ir._index.__len__()}")
+
         elif cmd.startswith("len "):
             if ir is None:
                 print("Index not loaded.")
@@ -185,7 +213,7 @@ def main():
                 continue
             query = user_input[4:].strip()
             if query:
-                delete_document(query, ir)
+                delete_documents(query, ir)
             else:
                 print("You must specify a string after 'del'.")
 
@@ -209,12 +237,6 @@ def main():
 
         elif cmd == "help":
             help_menu()
-
-        elif cmd == "number of docs":
-            if ir is None:
-                print("Index not loaded.")
-                continue
-            number_of_docs(ir)
 
         else:
             print(f"Unknown command: '{user_input}'")
