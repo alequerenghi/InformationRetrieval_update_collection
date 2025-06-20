@@ -171,22 +171,27 @@ class IrSystem:
         # Assicura che la cartella esista
         os.makedirs(filepath, exist_ok=True)
 
-        # Salvataggio dei file nella cartella
-        self._index.save_index(os.path.join(filepath, "index.pkl"))
-        self._biword.save_index(os.path.join(filepath, "biword.pkl"))
-        self.save_invalid_vec(os.path.join(filepath, "invalidation_bit_vector.json"))
+        # Filtra e salva solo gli indici puliti
+        self._index.filter_deleted(self._invalid_vec).save_index(os.path.join(filepath, "index.pkl"))
+        self._biword.filter_deleted(self._invalid_vec).save_index(os.path.join(filepath, "biword.pkl"))
 
-        print(f"Indexes saved on disk, in the folder: '{filepath}'")
+        print(f"Filtered indexes saved on disk in: '{filepath}'")
+        # Nota: non salviamo più l'invalidation_bit_vector
+
 
     def load_index_from_disk(self, filepath: Optional[str] = None) -> 'IrSystem':
         if filepath is None:
-            filepath = "index_files"  # cartella di default
+            filepath = "index_files"
 
         self._index = InvertedIndex.load_index(os.path.join(filepath, "index.pkl"))
         self._biword = InvertedIndex.load_index(os.path.join(filepath, "biword.pkl"))
-        self.load_invalid_vec(os.path.join(filepath, "invalidation_bit_vector.json"))
+        
+        self._invalid_vec = [0] * len(self._corpus)
 
-        print(f"Indexes load from the folder: '{filepath}'")
+        print(f"Filtered indexes loaded from: '{filepath}'")
+        return self
+        
+
 
 # Rende una espressione da infix a postfix: a AND b OR c -> a b AND c OR
 def infix_to_postfix(tokens: list[str]) -> list[str]:
