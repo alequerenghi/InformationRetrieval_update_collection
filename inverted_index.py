@@ -1,5 +1,5 @@
 from postings_list import PostingsList
-
+import pickle
 import re
 from tqdm import tqdm
 from BTrees.OOBTree import OOBTree
@@ -76,4 +76,20 @@ class InvertedIndex:
         return len(self.btree)
 
     def __repr__(self) -> str:
-        return self.btree
+        return self.btree1
+
+
+    def save_index(self, filepath: str):
+        # Converte il btree in dizionario semplice per serializzare
+        simple_dict = dict(self.btree.items())
+        with open(filepath, 'wb') as f:
+            pickle.dump(simple_dict, f)
+
+    @classmethod
+    def load_index(cls, filepath: str) -> 'InvertedIndex':
+        with open(filepath, 'rb') as f:
+            simple_dict = pickle.load(f)
+        idx = cls()
+        # ricrea OOBTree e inserisce tutti i termini
+        idx.btree.update(simple_dict)
+        return idx

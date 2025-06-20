@@ -2,17 +2,23 @@ from movie_description import MovieDescription
 from inverted_index import InvertedIndex
 from postings_list import PostingsList
 from functools import reduce
-
+import json
+from typing import Optional
+import os
 
 class IrSystem:
-    def __init__(self, corpus: list[MovieDescription], index: InvertedIndex, biword: InvertedIndex, max_size_aux=10000) -> None:
+    def __init__(self, corpus: list[MovieDescription], 
+                 index: Optional[InvertedIndex] = None, 
+                 biword: Optional[InvertedIndex] = None, 
+                 invalid_vec: Optional[list[int]] = None,
+                 max_size_aux=10000) -> None:
         self._corpus = corpus
-        self._index = index  # inverted index
-        self._invalid_vec = []  # invalidation bit vector
-        self._temp_idx = None  # indice ausiliario
-        self.max_size_aux = max_size_aux  # massimo docID assegnato
-        self._biword = biword  # inverted index con biword per phrase queries
+        self._index = index
+        self._biword = biword
+        self._invalid_vec = invalid_vec if invalid_vec is not None else [0]*len(corpus)
+        self._temp_idx = None
         self._temp_biword = None
+        self.max_size_aux = max_size_aux
 
     # Crea l'indice e il biword
     @classmethod
@@ -79,7 +85,7 @@ class IrSystem:
             if token in ('AND', 'OR', 'NOT'):
                 right = stack.pop()
                 left = stack.pop()
-                if token == 'AND':  # caso AND, conviene ottimizzare la query facendo l'intersezione delle liste piu' corte in primis
+                if token == 'AND':  # caso AND, conviene ottimizzare la query facendo l'intersezione delle liste più corte in primis
                     if not isinstance(left, list):
                         left = [left]
                     if not isinstance(right, list):
@@ -87,10 +93,10 @@ class IrSystem:
                     # aggiungi allo stack una lista [left, right]
                     stack.append(left + right)
                 elif token in ('OR', 'NOT'):
-                    if isinstance(left, list):  # se left e' una lista (catena di AND)
+                    if isinstance(left, list):  # se left è una lista (catena di AND)
                         # effettua la sequenza di AND
                         left = self._optimize_and_query(left)
-                    if isinstance(right, list):  # se right e' una lista (catena di AND)
+                    if isinstance(right, list):  # se right è una lista (catena di AND)
                         # effettua la sequenza di AND
                         right = self._optimize_and_query(right)
                     if token == 'OR':  # effettua l'OR
@@ -98,13 +104,20 @@ class IrSystem:
                     else:  # effettua il NOT (AND NOT)
                         stack.append(left.negation(right))
             else:  # aggiungi una PostingsList da processare allo stack
-                base = self._index.btree.get(
-                    token, PostingsList.from_postings_list([]))
-                aux = self._temp_idx.btree.get(token, PostingsList.from_postings_list(
-                    [])) if self._temp_idx else PostingsList.from_postings_list([])
-                stack.append(base.merge(aux))
+                base = self._index.btree.get(token, PostingsList.from_postings_list([]))
+                aux = self._temp_idx.btree.get(token, PostingsList.from_postings_list([])) if self._temp_idx else PostingsList.from_postings_list([])
+
+                # Controlla se base o aux sono vuoti e evita di chiamare merge su liste vuote
+                if not base._postings_list and not aux._postings_list:
+                    stack.append(PostingsList.from_postings_list([]))  # lista vuota
+                elif not base._postings_list:
+                    stack.append(aux)
+                elif not aux._postings_list:
+                    stack.append(base)
+                else:
+                    stack.append(base.merge(aux))
         result = stack.pop()  # estrai l'ultimo elemento (risultato finale)
-        if isinstance(result, list):  # se e' tuttora una lista (= catena di AND), fai l'intersezione
+        if isinstance(result, list):  # se è tuttora una lista (= catena di AND), fai l'intersezione
             result = self._optimize_and_query(result)
         # elimina i documenti cancellati
         return self._remove_deleted(result).get_from_corpus(self._corpus)
@@ -141,6 +154,39 @@ class IrSystem:
         plist = reduce(lambda x, y: x.intersection(y), postings)
         # rimuovi cancellati e ritorna i risultati
         return self._remove_deleted(plist).get_from_corpus(self._corpus)
+    
+    def save_invalid_vec(self, filepath: str) -> None:
+        with open(filepath, 'w') as f:
+            json.dump(self._invalid_vec, f)
+
+    def load_invalid_vec(self, filepath: str) -> list[int]:
+        with open(filepath, 'r') as f:
+            invalid_vec = json.load(f)
+        self._invalid_vec = invalid_vec
+    
+    def save_index_to_disk(self, filepath: Optional[str] = None):
+        if filepath is None:
+            filepath = "index_files"  # cartella di default
+
+        # Assicura che la cartella esista
+        os.makedirs(filepath, exist_ok=True)
+
+        # Salvataggio dei file nella cartella
+        self._index.save_index(os.path.join(filepath, "index.pkl"))
+        self._biword.save_index(os.path.join(filepath, "biword.pkl"))
+        self.save_invalid_vec(os.path.join(filepath, "invalidation_bit_vector.json"))
+
+        print(f"Indexes saved on disk, in the folder: '{filepath}'")
+
+    def load_index_from_disk(self, filepath: Optional[str] = None) -> 'IrSystem':
+        if filepath is None:
+            filepath = "index_files"  # cartella di default
+
+        self._index = InvertedIndex.load_index(os.path.join(filepath, "index.pkl"))
+        self._biword = InvertedIndex.load_index(os.path.join(filepath, "biword.pkl"))
+        self.load_invalid_vec(os.path.join(filepath, "invalidation_bit_vector.json"))
+
+        print(f"Indexes load from the folder: '{filepath}'")
 
 # Rende una espressione da infix a postfix: a AND b OR c -> a b AND c OR
 def infix_to_postfix(tokens: list[str]) -> list[str]:
