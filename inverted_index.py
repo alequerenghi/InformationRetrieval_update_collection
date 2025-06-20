@@ -1,20 +1,36 @@
+import re
 from postings_list import PostingsList
 import pickle
 import re
 from tqdm import tqdm
 from BTrees.OOBTree import OOBTree
 from stop_words import get_stop_words
+import spacy
+from functools import lru_cache
+from nltk.stem import SnowballStemmer
+
+stemmer = SnowballStemmer("english")
+
 
 stop_words = get_stop_words('english')
+
 
 def normalize(text):
     """Remove punctuation and convert text to lowercase"""
     return re.sub(r'[^\w\s^-]', '', text).lower()
 
 
-def tokenize(content) -> list:
-    """Split normalized text into tokens"""
-    return normalize(content).split()
+nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
+
+
+@lru_cache(maxsize=100_000)
+def cached_stem(word):
+    return stemmer.stem(word)
+
+
+def tokenize(text):
+    normalized = normalize(text).split()
+    return [cached_stem(token) for token in normalized]
 
 
 class InvertedIndex:
@@ -28,8 +44,7 @@ class InvertedIndex:
         # per ogni documento
         for doc_id, content in enumerate(tqdm(corpus, initial=max_size)):
             tokens_list = tokenize(content.description)
-            tokens_filtered = [t for t in tokens_list if t not in stop_words]
-            tokens = set(tokens_filtered)
+            tokens = set(tokens_list)
             # crea un set dei termini che contiene
             # tokens = set(tokenize(content.description))
             for token in tokens:  # per ogni termine
@@ -77,7 +92,6 @@ class InvertedIndex:
 
     def __repr__(self) -> str:
         return self.btree1
-
 
     def save_index(self, filepath: str):
         # Converte il btree in dizionario semplice per serializzare

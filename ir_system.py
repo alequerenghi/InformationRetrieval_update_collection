@@ -1,21 +1,41 @@
+import json
+import os
+from typing import Optional
 from movie_description import MovieDescription
-from inverted_index import InvertedIndex
+from inverted_index import InvertedIndex, tokenize
 from postings_list import PostingsList
 from functools import reduce
-import json
-from typing import Optional
-import os
+import re
+
+
+def tokenize_logical_query(query: str):
+    # Tokenize by whitespace and keep parentheses and operators
+    pattern = r'\b(?:AND|OR|NOT)\b|\(|\)|\w+'
+    raw_tokens = re.findall(pattern, query)
+
+    processed_tokens = []
+    for token in raw_tokens:
+        if token.upper() in {'AND', 'OR', 'NOT', '(', ')'}:
+            processed_tokens.append(token.upper())
+        else:
+            lemmatized = tokenize(token)
+            if lemmatized:  # some terms may be stopwords and filtered out
+                # assume single-word queries for simplicity
+                processed_tokens.append(lemmatized[0])
+    return processed_tokens
+
 
 class IrSystem:
-    def __init__(self, corpus: list[MovieDescription], 
-                 index: Optional[InvertedIndex] = None, 
-                 biword: Optional[InvertedIndex] = None, 
+    def __init__(self, corpus: list[MovieDescription],
+                 index: Optional[InvertedIndex] = None,
+                 biword: Optional[InvertedIndex] = None,
                  invalid_vec: Optional[list[int]] = None,
                  max_size_aux=10000) -> None:
         self._corpus = corpus
         self._index = index
         self._biword = biword
-        self._invalid_vec = invalid_vec if invalid_vec is not None else [0]*len(corpus)
+        self._invalid_vec = invalid_vec if invalid_vec is not None else [
+            0]*len(corpus)
         self._temp_idx = None
         self._temp_biword = None
         self.max_size_aux = max_size_aux
@@ -39,7 +59,8 @@ class IrSystem:
     def add_docs(self, corpus: list[MovieDescription]) -> 'IrSystem':
         # i nuovi documenti usano docID piu' grandi
         aux = InvertedIndex.from_corpus(corpus, len(self._invalid_vec))
-        aux_biword = InvertedIndex.from_corpus_biword(corpus, len(self._invalid_vec))
+        aux_biword = InvertedIndex.from_corpus_biword(
+            corpus, len(self._invalid_vec))
         if self._temp_idx is None:  # se non e' presente nell'indice ausiliario
             self._temp_idx = aux  # aggiungilo
         else:  # altrimenti
@@ -48,10 +69,10 @@ class IrSystem:
             self._temp_biword = aux_biword
         else:
             self._temp_biword.merge(aux_biword)
-        
+
         if len(self._temp_idx) > self.max_size_aux:  # se l'indice ausiliario e' troppo grande
             self.merge_idx()  # fai merge
-       
+
         # aggiorna la dimensione massima attuale
         self.max_size_aux += len(corpus)
         # aggiorna l'invalidation bit vector
@@ -65,19 +86,19 @@ class IrSystem:
             self._index = self._temp_idx
         else:
             self._index.merge(self._temp_idx)
-        
+
         if self._biword is None:
             self._biword = self._temp_biword
         else:
             self._biword.merge(self._temp_biword)
-        
+
         self._temp_idx = None
         self._temp_biword = None
         return self
 
     # Effettua una query booleana combinando i termini con AND, OR e NOT
     def query(self, query: str) -> list[str]:
-        tokens = query.split()
+        tokens = tokenize_logical_query(query)
         # riscrive la query con gli operatori postfix
         postfix = infix_to_postfix(tokens)
         stack = []  # PostingsList ancora da processare
@@ -104,12 +125,15 @@ class IrSystem:
                     else:  # effettua il NOT (AND NOT)
                         stack.append(left.negation(right))
             else:  # aggiungi una PostingsList da processare allo stack
-                base = self._index.btree.get(token, PostingsList.from_postings_list([]))
-                aux = self._temp_idx.btree.get(token, PostingsList.from_postings_list([])) if self._temp_idx else PostingsList.from_postings_list([])
+                base = self._index.btree.get(
+                    token, PostingsList.from_postings_list([]))
+                aux = self._temp_idx.btree.get(token, PostingsList.from_postings_list(
+                    [])) if self._temp_idx else PostingsList.from_postings_list([])
 
                 # Controlla se base o aux sono vuoti e evita di chiamare merge su liste vuote
                 if not base._postings_list and not aux._postings_list:
-                    stack.append(PostingsList.from_postings_list([]))  # lista vuota
+                    # lista vuota
+                    stack.append(PostingsList.from_postings_list([]))
                 elif not base._postings_list:
                     stack.append(aux)
                 elif not aux._postings_list:
@@ -154,7 +178,7 @@ class IrSystem:
         plist = reduce(lambda x, y: x.intersection(y), postings)
         # rimuovi cancellati e ritorna i risultati
         return self._remove_deleted(plist).get_from_corpus(self._corpus)
-    
+
     def save_invalid_vec(self, filepath: str) -> None:
         with open(filepath, 'w') as f:
             json.dump(self._invalid_vec, f)
@@ -163,7 +187,7 @@ class IrSystem:
         with open(filepath, 'r') as f:
             invalid_vec = json.load(f)
         self._invalid_vec = invalid_vec
-    
+
     def save_index_to_disk(self, filepath: Optional[str] = None):
         if filepath is None:
             filepath = "index_files"  # cartella di default
@@ -174,7 +198,8 @@ class IrSystem:
         # Salvataggio dei file nella cartella
         self._index.save_index(os.path.join(filepath, "index.pkl"))
         self._biword.save_index(os.path.join(filepath, "biword.pkl"))
-        self.save_invalid_vec(os.path.join(filepath, "invalidation_bit_vector.json"))
+        self.save_invalid_vec(os.path.join(
+            filepath, "invalidation_bit_vector.json"))
 
         print(f"Indexes saved on disk, in the folder: '{filepath}'")
 
@@ -182,13 +207,18 @@ class IrSystem:
         if filepath is None:
             filepath = "index_files"  # cartella di default
 
-        self._index = InvertedIndex.load_index(os.path.join(filepath, "index.pkl"))
-        self._biword = InvertedIndex.load_index(os.path.join(filepath, "biword.pkl"))
-        self.load_invalid_vec(os.path.join(filepath, "invalidation_bit_vector.json"))
+        self._index = InvertedIndex.load_index(
+            os.path.join(filepath, "index.pkl"))
+        self._biword = InvertedIndex.load_index(
+            os.path.join(filepath, "biword.pkl"))
+        self.load_invalid_vec(os.path.join(
+            filepath, "invalidation_bit_vector.json"))
 
         print(f"Indexes load from the folder: '{filepath}'")
 
 # Rende una espressione da infix a postfix: a AND b OR c -> a b AND c OR
+
+
 def infix_to_postfix(tokens: list[str]) -> list[str]:
     output = []  # risultato finale
     stack = []  # ancora da processare
