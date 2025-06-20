@@ -31,7 +31,6 @@ class InvertedIndex:
             tokens_filtered = [t for t in tokens_list if t not in stop_words]
             tokens = set(tokens_filtered)
             # crea un set dei termini che contiene
-            # tokens = set(tokenize(content.description))
             for token in tokens:  # per ogni termine
                 plist = PostingsList.from_doc_id(doc_id)
                 if token in terms:  # se contenuto
@@ -48,7 +47,7 @@ class InvertedIndex:
         terms = {}
         # per ogni documento
         for doc_id, content in enumerate(tqdm(corpus, initial=max_size)):
-            tokens = tokenize(content.description)
+            tokens = normalize(content.description).split()
             # per ogni parola
             for i in range(len(tokens) - 1):
                 biword = tokens[i]+tokens[i+1]
@@ -76,7 +75,7 @@ class InvertedIndex:
         return len(self.btree)
 
     def __repr__(self) -> str:
-        return self.btree1
+        return str(self.btree)
 
 
     def save_index(self, filepath: str):

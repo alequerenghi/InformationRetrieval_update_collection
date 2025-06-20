@@ -1,23 +1,12 @@
 from ir_system import IrSystem
 from movie_description import *
 
-def add_document(ir: IrSystem):
+
+def add_document(ir: IrSystem, metadata: str, description: str):
     print("adding...")
-    single_doc = MovieDescription(
-        title="The Example Movie",
-        description="A fascinating example movie used to test the IR system."
-    )
-    second_doc = MovieDescription(
-        title="The Example Movie",
-        description="A fascinating example movie used to test the IR system."
-    )
+    corpus = read_movie_description(metadata, description)
+    ir.add_docs(corpus)
 
-    # Metti il documento in una lista (anche se è solo uno)
-    corpus_single = [single_doc, second_doc]
-
-    # Aggiungi il documento singolo all'indice
-    ir.add_docs(corpus_single)
-    print("added")
 
 def delete_document(query: str, ir: IrSystem):
     ids = set()
@@ -53,9 +42,11 @@ def delete_document(query: str, ir: IrSystem):
     else:
         print("No valid ID provided.")
 
+
 def number_of_docs(ir: IrSystem):
     count = ir._invalid_vec.count(0)
     print(f"Remaining documents: {count}")
+
 
 def help_menu():
     print("Available commands:")
@@ -71,6 +62,7 @@ def help_menu():
     print(" - number of docs")
     print(" - exit")
 
+
 def load_index():
     print("wait...")
     corpus = read_movie_description(
@@ -83,7 +75,8 @@ def load_index():
         print("Index successfully loaded.")
     except Exception as e:
         print(f"Index loading error: {e}")
-        answer = input("Index not found. Do you want to create it from scratch? (y/n): ").strip().lower()
+        answer = input(
+            "Index not found. Do you want to create it from scratch? (y/n): ").strip().lower()
         if answer == 'y':
             ir = IrSystem.from_corpus(corpus)
             ir.save_index_to_disk()
@@ -93,6 +86,7 @@ def load_index():
             return None
     return ir
 
+
 def build_index():
     print("wait...")
     corpus = read_movie_description(
@@ -100,16 +94,19 @@ def build_index():
         '/Users/gabriele/Desktop/data/plot_summaries.txt'
     )
     ir = IrSystem.from_corpus(corpus)
-    answer = input("Created, do you want to save it to disk? (y/n): ").strip().lower()
+    answer = input(
+        "Created, do you want to save it to disk? (y/n): ").strip().lower()
     if answer == 'y':
         ir.save_index_to_disk()
         print("saved")
     return ir
 
+
 def save_index(ir: IrSystem):
     print("wait...")
     ir.save_index_to_disk()
     print("Index saved")
+
 
 def search(query: str, ir: IrSystem):
     if ir is None:
@@ -123,9 +120,11 @@ def search(query: str, ir: IrSystem):
         results = ir.query(query)
     return results
 
+
 def count_results(query: str, ir: IrSystem):
     results = search(query, ir)
     return len(results) if results else 0
+
 
 def print_title():
     ascii_art = r"""
@@ -141,6 +140,7 @@ def print_title():
 by Alessandro, Cristina, Gabriele                                               
     """
     print(ascii_art)
+
 
 def main():
     print_title()
@@ -189,11 +189,12 @@ def main():
             else:
                 print("You must specify a string after 'del'.")
 
-        elif cmd == "add":
+        elif cmd.startswith("add"):
             if ir is None:
                 print("Index not loaded.")
-                continue
-            add_document(ir)
+            else:
+                metadata, description = user_input.split()[1:]
+                add_document(ir, metadata, description)
 
         elif cmd in ["build index", "bi"]:
             ir = build_index()
@@ -218,6 +219,7 @@ def main():
 
         else:
             print(f"Unknown command: '{user_input}'")
+
 
 if __name__ == "__main__":
     main()
