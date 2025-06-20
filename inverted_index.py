@@ -1,20 +1,12 @@
+import re
 from postings_list import PostingsList
 import pickle
 import re
 from tqdm import tqdm
-from BTrees import OOBTree
+from BTrees.OOBTree import OOBTree
 from stop_words import get_stop_words
-
-stop_words = get_stop_words('english')
-
-def normalize(text):
-    """Remove punctuation and convert text to lowercase"""
-    return re.sub(r'[^\w\s^-]', '', text).lower()
-
-
-def tokenize(content) -> list:
-    """Split normalized text into tokens"""
-    return normalize(content).split()
+from functools import lru_cache
+from nltk.stem import SnowballStemmer
 
 
 class InvertedIndex:
@@ -28,8 +20,7 @@ class InvertedIndex:
         # per ogni documento
         for doc_id, content in enumerate(tqdm(corpus, initial=max_size)):
             tokens_list = tokenize(content.description)
-            tokens_filtered = [t for t in tokens_list if t not in stop_words]
-            tokens = set(tokens_filtered)
+            tokens = set(tokens_list)
             # crea un set dei termini che contiene
             for token in tokens:  # per ogni termine
                 plist = PostingsList.from_doc_id(doc_id)
@@ -77,7 +68,6 @@ class InvertedIndex:
     def __repr__(self) -> str:
         return str(self.btree)
 
-
     def save_index(self, filepath: str):
         # Converte il btree in dizionario semplice per serializzare
         simple_dict = dict(self.btree.items())
@@ -92,16 +82,21 @@ class InvertedIndex:
         # ricrea OOBTree e inserisce tutti i termini
         idx.btree.update(simple_dict)
         return idx
-    
-    def filter_deleted(self, invalid_vec: list[int]) -> 'InvertedIndex':
-        """Crea una nuova InvertedIndex senza i documenti marcati come eliminati"""
-        filtered_index = InvertedIndex()
-        for term, postings in self.btree.items():
-            # Crea una nuova PostingsList filtrata
-            filtered_postings = PostingsList.from_postings_list(
-                [doc_id for doc_id in postings._postings_list 
-                if doc_id < len(invalid_vec) and not invalid_vec[doc_id]]
-            )
-            if filtered_postings._postings_list:  # Solo se ci sono ancora documenti
-                filtered_index.btree[term] = filtered_postings
-        return filtered_index
+
+
+def normalize(text):
+    """Remove punctuation and convert text to lowercase"""
+    return re.sub(r'[^\w\s^-]', '', text).lower()
+
+
+@lru_cache(maxsize=100_000)
+def cached_stem(word):
+    stemmer = SnowballStemmer("english")
+    return stemmer.stem(word)
+
+
+def tokenize(text):
+    normalized = normalize(text).split()
+    stop_words = get_stop_words('english')
+    stop_removed = [word for word in normalized not in stop_words]
+    return [cached_stem(token) for token in stop_removed]
