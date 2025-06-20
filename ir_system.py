@@ -1,7 +1,25 @@
 from movie_description import MovieDescription
-from inverted_index import InvertedIndex
+from inverted_index import InvertedIndex, tokenize
 from postings_list import PostingsList
 from functools import reduce
+import re
+
+
+def tokenize_logical_query(query: str):
+    # Tokenize by whitespace and keep parentheses and operators
+    pattern = r'\b(?:AND|OR|NOT)\b|\(|\)|\w+'
+    raw_tokens = re.findall(pattern, query)
+
+    processed_tokens = []
+    for token in raw_tokens:
+        if token.upper() in {'AND', 'OR', 'NOT', '(', ')'}:
+            processed_tokens.append(token.upper())
+        else:
+            lemmatized = tokenize(token)
+            if lemmatized:  # some terms may be stopwords and filtered out
+                # assume single-word queries for simplicity
+                processed_tokens.append(lemmatized[0])
+    return processed_tokens
 
 
 class IrSystem:
@@ -62,7 +80,7 @@ class IrSystem:
 
     # Effettua una query booleana combinando i termini con AND, OR e NOT
     def query(self, query: str) -> list[str]:
-        tokens = query.split()
+        tokens = tokenize_logical_query(query)
         # riscrive la query con gli operatori postfix
         postfix = infix_to_postfix(tokens)
         stack = []  # PostingsList ancora da processare
