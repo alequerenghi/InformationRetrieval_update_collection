@@ -3,21 +3,6 @@ from movie_description import *
 
 def add_document(ir: IrSystem):
     print("adding...")
-    single_doc = MovieDescription(
-        title="The Example Movie",
-        description="A fascinating example movie used to test the IR system."
-    )
-    second_doc = MovieDescription(
-        title="The Example Movie",
-        description="A fascinating example movie used to test the IR system."
-    )
-
-    # Metti il documento in una lista (anche se è solo uno)
-    corpus_single = [single_doc, second_doc]
-
-    # Aggiungi il documento singolo all'indice
-    ir.add_docs(corpus_single)
-    print("added")
 
 def delete_document(query: str, ir: IrSystem):
     ids = set()
