@@ -11,7 +11,6 @@ class MovieDescription:
 
 # leggi il file descrizione e metadata e crea un corpus (collection di documenti)
 
-
 def read_movie_description(movie_metadata, description_file) -> list[MovieDescription]:
     names = {}
     corpus = []

@@ -33,29 +33,38 @@ class IrSystem:
     def add_docs(self, corpus: list[MovieDescription]) -> 'IrSystem':
         # i nuovi documenti usano docID piu' grandi
         aux = InvertedIndex.from_corpus(corpus, len(self._invalid_vec))
+        aux_biword = InvertedIndex.from_corpus_biword(corpus, len(self._invalid_vec))
         if self._temp_idx is None:  # se non e' presente nell'indice ausiliario
             self._temp_idx = aux  # aggiungilo
         else:  # altrimenti
             self._temp_idx.merge(aux)
-        if len(self._temp_idx) > self.max_size_aux:  # se l'indice ausiliario e' troppo grande
-            self.merge_idx()  # fai merge
-
-        aux_biword = InvertedIndex.from_corpus_biword(
-            corpus, len(self._invalid_vec))
         if self._temp_biword is None:
             self._temp_biword = aux_biword
         else:
             self._temp_biword.merge(aux_biword)
+        
+        if len(self._temp_idx) > self.max_size_aux:  # se l'indice ausiliario e' troppo grande
+            self.merge_idx()  # fai merge
+       
         # aggiorna la dimensione massima attuale
         self.max_size_aux += len(corpus)
         # aggiorna l'invalidation bit vector
         self._invalid_vec += [0] * len(corpus)
+        self._corpus += corpus
         return self
 
     # Merge dell'indice ausilario con l'InvertedIndex
     def merge_idx(self) -> 'IrSystem':
-        self._index.merge(self._temp_idx)
-        self._biword.merge(self._temp_biword)
+        if self._index is None:
+            self._index = self._temp_idx
+        else:
+            self._index.merge(self._temp_idx)
+        
+        if self._biword is None:
+            self._biword = self._temp_biword
+        else:
+            self._biword.merge(self._temp_biword)
+        
         self._temp_idx = None
         self._temp_biword = None
         return self
@@ -134,8 +143,6 @@ class IrSystem:
         return self._remove_deleted(plist).get_from_corpus(self._corpus)
 
 # Rende una espressione da infix a postfix: a AND b OR c -> a b AND c OR
-
-
 def infix_to_postfix(tokens: list[str]) -> list[str]:
     output = []  # risultato finale
     stack = []  # ancora da processare

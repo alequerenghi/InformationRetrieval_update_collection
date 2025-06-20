@@ -1,5 +1,6 @@
 from postings_list import PostingsList
 
+import re
 from tqdm import tqdm
 from BTrees.OOBTree import OOBTree
 from stop_words import get_stop_words
@@ -25,12 +26,12 @@ class InvertedIndex:
     def from_corpus(cls, corpus, max_size=0) -> 'InvertedIndex':
         terms = {}  # dizionario temporaneo per tenere l'indice iniziale
         # per ogni documento
-        for doc_id, content in enumerate(tqdm(corpus, total=max_size or None)):
+        for doc_id, content in enumerate(tqdm(corpus, initial=max_size)):
             tokens_list = tokenize(content.description)
             tokens_filtered = [t for t in tokens_list if t not in stop_words]
             tokens = set(tokens_filtered)
             # crea un set dei termini che contiene
-            #tokens = set(tokenize(content.description))
+            # tokens = set(tokenize(content.description))
             for token in tokens:  # per ogni termine
                 plist = PostingsList.from_doc_id(doc_id)
                 if token in terms:  # se contenuto
@@ -46,7 +47,7 @@ class InvertedIndex:
     def from_corpus_biword(cls, corpus, max_size=0) -> 'InvertedIndex':
         terms = {}
         # per ogni documento
-        for doc_id, content in enumerate(tqdm(corpus, total=max_size or None)):
+        for doc_id, content in enumerate(tqdm(corpus, initial=max_size)):
             tokens = tokenize(content.description)
             # per ogni parola
             for i in range(len(tokens) - 1):
