@@ -3,7 +3,7 @@ from postings_list import PostingsList
 import pickle
 import re
 from tqdm import tqdm
-from BTrees.OOBTree import OOBTree
+from BTrees._OOBTree import OOBTree
 from stop_words import get_stop_words
 from functools import lru_cache
 from nltk.stem import SnowballStemmer

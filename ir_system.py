@@ -1,11 +1,10 @@
-import json
 import os
-from typing import Optional
 from movie_description import MovieDescription
 from inverted_index import InvertedIndex, tokenize, normalize
 from postings_list import PostingsList
 from functools import reduce
 import re
+import pickle
 
 
 class IrSystem:
@@ -43,11 +42,9 @@ class IrSystem:
             corpus, len(self._invalid_vec))
         if self._temp_idx is None:  # se non e' presente nell'indice ausiliario
             self._temp_idx = aux  # aggiungilo
+            self._temp_biword = aux_biword
         else:  # altrimenti
             self._temp_idx.merge(aux)
-        if self._temp_biword is None:
-            self._temp_biword = aux_biword
-        else:
             self._temp_biword.merge(aux_biword)
 
         if len(self._temp_idx) > self.max_size_aux:  # se l'indice ausiliario e' troppo grande
@@ -62,23 +59,24 @@ class IrSystem:
 
     # Merge dell'indice ausilario con l'InvertedIndex
     def _merge_idx(self) -> 'IrSystem':
-        if self._index is None:
-            self._index = self._temp_idx
-        else:
+        if self._index and self._temp_idx:
             self._index.merge(self._temp_idx)
-
-        if self._biword is None:
-            self._biword = self._temp_biword
-        else:
             self._biword.merge(self._temp_biword)
+        elif self._temp_idx:
+            self._index = self._temp_idx
+            self._biword = self._temp_biword
+
         # rimuovi i documenti cancellati
         self._index.filter_deleted(self._invalid_vec)
         self._biword.filter_deleted(self._invalid_vec)
+
+        # elimina i documenti che sono stati rimossi dall'indice
+        for doc_id in self._invalid_vec:
+            self._corpus[doc_id].title = "REDACTED"
+            self._corpus[doc_id].description = ""
         # svuota gli indici temporanei
         self._temp_idx = None
         self._temp_biword = None
-        self.save_index_to_disk()
-        self.save_invalid_vec()
         return self
 
     # Effettua una query booleana combinando i termini con AND, OR e NOT
@@ -171,16 +169,8 @@ class IrSystem:
     # Specify the path where data is saved
     #
     #
-    def save_invalid_vec(self, filepath: str) -> None:
-        with open(filepath, 'w') as f:
-            json.dump(self._invalid_vec, f)
 
-    def load_invalid_vec(self, filepath: str) -> None:
-        with open(filepath, 'r') as f:
-            invalid_vec = json.load(f)
-        self._invalid_vec = invalid_vec
-
-    def save_index_to_disk(self, filepath: str):
+    def save_index_to_disk(self, filepath: str = None):
         if filepath is None:
             filepath = "index_files"  # cartella di default
 
@@ -191,15 +181,22 @@ class IrSystem:
         self._merge_idx()
         self._index.save_index(os.path.join(filepath, "index.pkl"))
         self._biword.save_index(os.path.join(filepath, "biword.pkl"))
+        with open(os.path.join(filepath, 'corpus.pkl'), 'wb') as f:
+            pickle.dump(self._corpus, f)
 
-    def load_index_from_disk(self, filepath: str) -> None:
+    @classmethod
+    def load_index_from_disk(cls, filepath: str) -> None:
         if filepath is None:
             filepath = "index_files"
-
-        self._index = InvertedIndex.load_index(
+        with open(os.path.join(filepath, 'corpus.pkl'), 'rb') as f:
+            corpus = pickle.load(f)
+        index = InvertedIndex.load_index(
             os.path.join(filepath, "index.pkl"))
-        self._biword = InvertedIndex.load_index(
+        biword = InvertedIndex.load_index(
             os.path.join(filepath, "biword.pkl"))
+        invalid_vec = [0] * len(index)
+        ir = cls(corpus, index, biword, invalid_vec)
+        return ir
 
 
 # Rende una espressione da infix a postfix: a AND b OR c -> a b AND c OR

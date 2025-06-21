@@ -2,50 +2,76 @@ from ir_system import IrSystem
 from movie_description import *
 
 
-def add_document(ir: IrSystem, metadata: str, description: str):
+def add_document(ir: IrSystem, title: str, description: str):
     print("adding...")
-    corpus = read_movie_description(metadata, description)
+    ir.add_docs(corpus=MovieDescription(title, description))
+    print("added")
+
+
+def add_documents(ir: IrSystem, metadata_file: str, description_file: str):
+    corpus = read_movie_description(metadata_file, description_file)
     ir.add_docs(corpus)
 
 
-def delete_document(query: str, ir: IrSystem):
-    ids = set()
-    valid_ranges = []
+def delete_documents(docs_to_delete: str, ir: IrSystem) -> None:
+    ids_to_delete = set()
 
-    for part in query.split(","):
-        part = part.strip()
+    for part in docs_to_delete.split():
+        part = part
+
+        # Handle range (e.g., '10-15')
         if "-" in part:
             try:
                 start, end = map(int, part.split("-"))
-                if start <= end:
-                    ids.update(range(start, end + 1))
-                    valid_ranges.append((start, end))
-                else:
-                    print(f"Invalid range (start > end): {part}")
+                if start > end:
+                    print(f"Error: Invalid range {part} (start > end)")
+                    continue
+                # Note: range(start, end) goes from start to end-1
+                ids_to_delete.update(range(start, end + 1)
+                                     )  # +1 to include end
             except ValueError:
-                print(f"Invalid range: {part}")
+                print(f"Error: Invalid range format '{part}'")
+
+        # Handle single number
         else:
             try:
-                single_id = int(part)
-                ids.add(single_id)
+                doc_id = int(part)
+                ids_to_delete.add(doc_id)
             except ValueError:
-                print(f"Invalid ID: {part}")
+                print(f"Error: Invalid document ID '{part}'")
 
-    if ids:
-        ir.delete_docs(sorted(ids))
-        if len(valid_ranges) == 1 and len(ids) == (valid_ranges[0][1] - valid_ranges[0][0] + 1):
-            start, end = valid_ranges[0]
-            print(f"Deleted documents: from {start} to {end}")
-        else:
-            print(f"Deleted documents: {sorted(ids)}")
-        number_of_docs(ir)
+    if not ids_to_delete:
+        print("No valid document IDs to delete")
+        return
+
+    # Convert to sorted list and delete
+    ids_list = sorted(ids_to_delete)
+    ir.delete_docs(ids_list)
+
+    # Print summary
+    if len(ids_list) == 1:
+        print(f"Deleted document: {ids_list[0]}")
     else:
-        print("No valid ID provided.")
+        # Find consecutive ranges for cleaner output
+        ranges = []
+        start = ids_list[0]
+        prev = start
 
+        for doc_id in ids_list[1:]:
+            if doc_id != prev + 1:
+                ranges.append((start, prev))
+                start = doc_id
+            prev = doc_id
+        ranges.append((start, prev))
 
-def number_of_docs(ir: IrSystem):
-    count = ir._invalid_vec.count(0)
-    print(f"Remaining documents: {count}")
+        # Format output
+        range_strings = [f"{s}-{e}" if s != e else str(s) for s, e in ranges]
+        print(f"Deleted documents: {', '.join(range_strings)}")
+
+    # Print remaining count
+    remaining = len([x for x in ir._invalid_vec if x == 0])
+    print(f"Remaining documents: {remaining}")
+    print(f"Index size (number of unique terms): {ir._index.__len__()}")
 
 
 def help_menu():
@@ -54,7 +80,7 @@ def help_menu():
     print(" - search <query>")
     print(' - search "quoted phrase"')
     print(" - len <query>")
-    print(" - del <doc_id(s)> (e.g. del 1,3-5)")
+    print(" - del <doc_id(s)> (e.g. 'del 1,3' or 'del 1-5')")
     print(" - add")
     print(" - build index (or bi)")
     print(" - load index (or li)")
@@ -65,13 +91,10 @@ def help_menu():
 
 def load_index():
     print("wait...")
-    corpus = read_movie_description(
-        'data/movie.metadata.tsv',
-        'data/plot_summaries.txt'
-    )
-    ir = IrSystem(corpus)
+    # corpus = read_movie_description(metadata_file, description_file)
+    # ir = IrSystem(corpus)
     try:
-        ir.load_index_from_disk()
+        ir = IrSystem.load_index_from_disk("index_files")
         print("Index successfully loaded.")
     except Exception as e:
         print(f"Index loading error: {e}")
@@ -79,7 +102,6 @@ def load_index():
             "Index not found. Do you want to create it from scratch? (y/n): ").strip().lower()
         if answer == 'y':
             ir = IrSystem.from_corpus(corpus)
-            ir.save_index_to_disk()
             print("Index created from scratch.")
         else:
             print("Exited without creating the index.")
@@ -87,32 +109,16 @@ def load_index():
     return ir
 
 
-def build_index():
+def build_index(metadata_file, description_file):
     print("wait...")
-    corpus = read_movie_description(
-        'data/movie.metadata.tsv',
-        'data/plot_summaries.txt'
-    )
+    corpus = read_movie_description(metadata_file, description_file)
     ir = IrSystem.from_corpus(corpus)
-    answer = input(
-        "Created, do you want to save it to disk? (y/n): ").strip().lower()
-    if answer == 'y':
-        ir.save_index_to_disk()
-        print("saved")
     return ir
 
 
-def save_index(ir: IrSystem):
-    print("wait...")
-    ir.save_index_to_disk()
-    print("Index saved")
-
-
 def search(query: str, ir: IrSystem):
-    if ir is None:
-        print("Index not loaded. Run 'build index' or 'load index' first.")
-        return
     print(f"Performing search for: '{query}'")
+    results = []
     if query.startswith('"') and query.endswith('"'):
         phrase = query[1:-1]
         results = ir.phrase_query(phrase)
@@ -154,71 +160,35 @@ def main():
 
         cmd = user_input.lower()
 
-        if cmd == "exit":
-            print("Exiting...")
-            break
-
-        elif cmd.startswith("search "):
-            if ir is None:
-                print("Index not loaded.")
-                continue
-            query = user_input[7:].strip()
-            if query:
-                results = search(query, ir)
-                print(results)
-            else:
-                print("You must specify a string after 'search'.")
-
-        elif cmd.startswith("len "):
-            if ir is None:
-                print("Index not loaded.")
-                continue
-            query = user_input[4:].strip()
-            if query:
-                print(count_results(query, ir))
-            else:
-                print("You must specify a string after 'len'.")
-
-        elif cmd.startswith("del "):
-            if ir is None:
-                print("Index not loaded.")
-                continue
-            query = user_input[4:].strip()
-            if query:
-                delete_document(query, ir)
-            else:
-                print("You must specify a string after 'del'.")
-
-        elif cmd.startswith("add"):
-            if ir is None:
-                print("Index not loaded.")
-            else:
-                metadata, description = user_input.split()[1:]
-                add_document(ir, metadata, description)
-
-        elif cmd in ["build index", "bi"]:
-            ir = build_index()
-
+        if cmd.startswith("build"):
+            metadat, titles = cmd.split()[1:]
+            ir = build_index(metadat, titles)
         elif cmd in ["load index", "li"]:
             ir = load_index()
-
-        elif cmd in ["save index", "si"]:
-            if ir is None:
-                print("Index not loaded.")
-                continue
-            save_index(ir)
-
         elif cmd == "help":
             help_menu()
-
-        elif cmd == "number of docs":
-            if ir is None:
-                print("Index not loaded.")
-                continue
-            number_of_docs(ir)
-
+        elif cmd == "exit":
+            print("Exiting...")
+            if ir is not None:
+                ir.save_index_to_disk()
+            break
+        elif ir is not None:
+            if cmd.startswith("del "):
+                query = user_input[4:].strip()
+                if query:
+                    delete_documents(query, ir)
+                else:
+                    print("You must specify a string after 'del'.")
+            elif cmd.startswith("add"):
+                metadata, description = user_input.split()[1:]
+                add_document(ir, metadata, description)
+            else:
+                results = search(cmd, ir)
+                for result in results:
+                    print(result)
         else:
-            print(f"Unknown command: '{user_input}'")
+            print("Index not loaded.")
+            continue
 
 
 if __name__ == "__main__":
