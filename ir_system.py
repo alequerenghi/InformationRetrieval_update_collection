@@ -24,8 +24,8 @@ class IrSystem:
         biword = InvertedIndex.from_corpus_biword(corpus)
         invalid_vec = [0] * len(corpus)
         ir = cls(corpus, index, biword, invalid_vec)
-        ir.save_index_to_disk()
-        ir.save_invalid_vec()
+        # ir.save_index_to_disk()
+        # ir.save_invalid_vec()
         return ir
 
     # Segna documenti cancellati
@@ -85,28 +85,20 @@ class IrSystem:
         # riscrive la query con gli operatori postfix
         postfix = infix_to_postfix(tokens)
         stack = []  # PostingsList ancora da processare
+        to_optimize = []
         for token in postfix:
-            if token in ('AND', 'OR', 'NOT'):
+            if token == 'AND':  # caso AND, conviene ottimizzare la query facendo l'intersezione delle liste più corte in primis
                 right = stack.pop()
+                left = stack.pop() if stack else to_optimize.pop()
+                to_optimize += [left, right]
+            elif token == 'OR':
+                right = self._optimize_and_query(
+                    to_optimize) if to_optimize else stack.pop()
                 left = stack.pop()
-                if token == 'AND':  # caso AND, conviene ottimizzare la query facendo l'intersezione delle liste più corte in primis
-                    if not isinstance(left, list):
-                        left = [left]
-                    if not isinstance(right, list):
-                        right = [right]
-                    # aggiungi allo stack una lista [left, right]
-                    stack.append(left + right)
-                elif token in ('OR', 'NOT'):
-                    if isinstance(left, list):  # se left è una lista (catena di AND)
-                        # effettua la sequenza di AND
-                        left = self._optimize_and_query(left)
-                    if isinstance(right, list):  # se right è una lista (catena di AND)
-                        # effettua la sequenza di AND
-                        right = self._optimize_and_query(right)
-                    if token == 'OR':  # effettua l'OR
-                        stack.append(left.union(right))
-                    else:  # effettua il NOT (AND NOT)
-                        stack.append(left.negation(right))
+                stack.append(left.union(right))
+            elif token == 'NOT':
+                stack.append(stack.pop().negation(len(self._invalid_vec))
+                             if stack else to_optimize.pop().negation(len(self._invalid_vec)))
             else:  # aggiungi una PostingsList da processare allo stack
                 base = self._index.btree.get(
                     token, PostingsList.from_postings_list([]))
@@ -114,16 +106,15 @@ class IrSystem:
                     [])) if self._temp_idx else PostingsList.from_postings_list([])
 
                 # Controlla se base o aux sono vuoti e evita di chiamare merge su liste vuote
-                if not base._postings_list and not aux._postings_list:
-                    # lista vuota
-                    stack.append(PostingsList.from_postings_list([]))
-                elif not base._postings_list:
+                if base._postings_list:
+                    if aux._postings_list:
+                        stack.append(base.merge(aux))
+                    else:
+                        stack.append(base)
+                elif aux._postings_list:
                     stack.append(aux)
-                elif not aux._postings_list:
-                    stack.append(base)
-                else:
-                    stack.append(base.merge(aux))
-        result = stack.pop()  # estrai l'ultimo elemento (risultato finale)
+        # estrai l'ultimo elemento (risultato finale)
+        result = stack.pop() if stack else to_optimize
         if isinstance(result, list):  # se è tuttora una lista (= catena di AND), fai l'intersezione
             result = self._optimize_and_query(result)
         # elimina i documenti cancellati
@@ -206,7 +197,7 @@ def infix_to_postfix(tokens: list[str]) -> list[str]:
     for token in tokens:
         if token in ('AND', 'OR', 'NOT'):  # se e' un operatore
             # finche' ci sono parole da processare e non e' una parentesi
-            while (stack and stack[-1] != '('):
+            while (stack and stack[-1] != '(' and token != 'NOT'):
                 # aggiungi al risultato finale le parole una dopo l'altra
                 output.append(stack.pop())
             stack.append(token)  # aggiungi l'operatore allo stack

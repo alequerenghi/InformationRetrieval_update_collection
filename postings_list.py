@@ -84,25 +84,10 @@ class PostingsList:
         return PostingsList.from_postings_list(plist)
 
     # Effettua la negazione del tipo AND NOT con il metodo dei due indici
-    def negation(self, other: 'PostingsList') -> 'PostingsList':
-        plist = []
-        i = 0
-        j = 0
-        while (i < len(self._postings_list)) and (j < len(other._postings_list)):
-            # se self contiene il docID, scartalo e incrementa entrambi
-            if self._postings_list[i] == other._postings_list[j]:
-                i += 1
-                j += 1
-            # aggiungi il docID da self e incrementa se e' piu' piccolo
-            elif self._postings_list[i] < other._postings_list[j]:
-                plist.append(self._postings_list[i])
-                i += 1
-            # incrementa other
-            else:
-                j += 1
-        # aggiungi i documenti mancanti da self
-        if i < len(self._postings_list):  # se e' piu' lungo di other
-            plist += self._postings_list[i:]
+    def negation(self, max_doc: int) -> 'PostingsList':
+        plist = [i for i in range(max_doc)]
+        for i in self._postings_list:
+            plist.remove(i)
         return PostingsList.from_postings_list(plist)
 
     def __repr__(self) -> str:
