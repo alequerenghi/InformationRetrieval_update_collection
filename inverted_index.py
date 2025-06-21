@@ -59,16 +59,21 @@ class InvertedIndex:
                 self.btree[term] = postings
         return self
 
-    def __getitem__(self, key: str) -> PostingsList:
-        return self.btree[key]
+    def filter_deleted(self, invalid_vec: list[int]) -> 'InvertedIndex':
+        """Crea una nuova InvertedIndex senza i documenti marcati come eliminati"""
+        filtered_index = OOBTree()
+        for term, postings in self.btree.items():
+            # Crea una nuova PostingsList filtrata
+            filtered_postings = PostingsList.from_postings_list(
+                [doc_id for doc_id in postings._postings_list
+                    if doc_id < len(invalid_vec) and not invalid_vec[doc_id]]
+            )
+            if filtered_postings._postings_list:  # Solo se ci sono ancora documenti
+                filtered_index[term] = filtered_postings
+        self.btree = filtered_index
+        return self
 
-    def __len__(self) -> int:
-        return len(self.btree)
-
-    def __repr__(self) -> str:
-        return str(self.btree)
-
-    def save_index(self, filepath: str):
+    def save_index(self, filepath: str) -> None:
         # Converte il btree in dizionario semplice per serializzare
         simple_dict = dict(self.btree.items())
         with open(filepath, 'wb') as f:
@@ -82,6 +87,15 @@ class InvertedIndex:
         # ricrea OOBTree e inserisce tutti i termini
         idx.btree.update(simple_dict)
         return idx
+
+    def __getitem__(self, key: str) -> PostingsList:
+        return self.btree[key]
+
+    def __len__(self) -> int:
+        return len(self.btree)
+
+    def __repr__(self) -> str:
+        return str(self.btree)
 
 
 def normalize(text):
@@ -98,5 +112,5 @@ def cached_stem(word):
 def tokenize(text):
     normalized = normalize(text).split()
     stop_words = get_stop_words('english')
-    stop_removed = [word for word in normalized not in stop_words]
+    stop_removed = [word for word in normalized if word not in stop_words]
     return [cached_stem(token) for token in stop_removed]
