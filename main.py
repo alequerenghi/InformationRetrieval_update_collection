@@ -1,17 +1,13 @@
 from ir_system import IrSystem
 from movie_description import *
 
-
 def add_document(ir: IrSystem, title: str, description: str):
-    print("adding...")
-    ir.add_docs(corpus=MovieDescription(title, description))
+    ir.add_docs(new_docs=MovieDescription(title, description))
     print("added")
-
 
 def add_documents(ir: IrSystem, metadata_file: str, description_file: str):
     corpus = read_movie_description(metadata_file, description_file)
     ir.add_docs(corpus)
-
 
 def delete_documents(docs_to_delete: str, ir: IrSystem) -> None:
     ids_to_delete = set()
@@ -94,7 +90,7 @@ def load_index():
     # corpus = read_movie_description(metadata_file, description_file)
     # ir = IrSystem(corpus)
     try:
-        ir = IrSystem.load_index_from_disk("index_files")
+        ir = IrSystem.load_ir_system_from_disk("index_files")
         print("Index successfully loaded.")
     except Exception as e:
         print(f"Index loading error: {e}")
@@ -131,22 +127,20 @@ def count_results(query: str, ir: IrSystem):
     results = search(query, ir)
     return len(results) if results else 0
 
-
 def print_title():
     ascii_art = r"""
-  _    _           _       _       _____           _           
- | |  | |         | |     | |     |_   _|         | |          
+  _    _           _       _       _____           _
+ | |  | |         | |     | |     |_   _|         | |
  | |  | |_ __   __| | __ _| |_ ___  | |  _ __   __| | _____  __
  | |  | | '_ \ / _` |/ _` | __/ _ \ | | | '_ \ / _` |/ _ \ \/ /
- | |__| | |_) | (_| | (_| | ||  __/_| |_| | | | (_| |  __/>  < 
+ | |__| | |_) | (_| | (_| | ||  __/_| |_| | | | (_| |  __/>  <
   \____/| .__/ \__,_|\__,_|\__\___|_____|_| |_|\__,_|\___/_/\_\
-        | |                                                    
-        |_|     
+        | |
+        |_|
 
-by Alessandro, Cristina, Gabriele                                               
+ by Alessandro, Cristina and Gabriele
     """
     print(ascii_art)
-
 
 def main():
     print_title()
@@ -159,6 +153,20 @@ def main():
             continue
 
         cmd = user_input.lower()
+        # elif cmd == "len index":
+        #     if ir is None:
+        #         continue
+        #     print(f"Index size (number of unique terms): {ir._index.__len__()}")
+
+        # elif cmd.startswith("len "):
+        #     if ir is None:
+        #         print("Index not loaded.")
+        #         continue
+        #     query = user_input[4:].strip()
+        #     if query:
+        #         print(count_results(query, ir))
+        #     else:
+        #         print("You must specify a string after 'len'.")
 
         if cmd.startswith("build"):
             metadat, titles = cmd.split()[1:]
@@ -170,7 +178,7 @@ def main():
         elif cmd == "exit":
             print("Exiting...")
             if ir is not None:
-                ir.save_index_to_disk()
+                ir.write_ir_system_to_disk()
             break
         elif ir is not None:
             if cmd.startswith("del "):

@@ -4,7 +4,7 @@ class PostingsList:
     def __init__(self) -> None:
         self._postings_list = []
 
-    # crea una PostingsList da una lista di docID e la ordina (forse non necssario)
+    # crea una PostingsList da una lista di docID e la ordina
     @classmethod
     def from_postings_list(cls, postings_list: list[int]) -> 'PostingsList':
         plist = cls()
@@ -19,7 +19,8 @@ class PostingsList:
         plist._postings_list = [doc_id]
         return plist
 
-    # Concatena due PostingsList. Le liste sono ordinate e i duplicati rimossi. other contiene una PostingsList creata successivamente a self (i docID saranno piu grandi o uguali)
+    # Concatena due PostingsList. Le liste sono ordinate e i duplicati rimossi. 
+    # other contiene una PostingsList creata successivamente a self (i docID saranno piu grandi o uguali)
     def merge(self, other: "PostingsList") -> 'PostingsList':
         if self._postings_list == []:
             self._postings_list = other._postings_list
@@ -83,7 +84,7 @@ class PostingsList:
             plist += other._postings_list[j:]
         return PostingsList.from_postings_list(plist)
 
-    # Effettua la negazione del tipo AND NOT con il metodo dei due indici
+    # Effettua la negazione 
     def negation(self, max_doc: int) -> 'PostingsList':
         plist = [i for i in range(max_doc)]
         for i in self._postings_list:
