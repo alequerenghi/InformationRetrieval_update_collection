@@ -1,9 +1,9 @@
-from movie_description import read_movie_description
+from movie_description import create_corpus
 import csv
 import unittest
 from ir_system import IrSystem
 
-from movie_description import read_movie_description
+from movie_description import create_corpus
 import csv
 
 # File originali
@@ -18,7 +18,7 @@ sample_description_path = "plot_summaries_sample.txt"
 N = 42204
 
 # Leggi corpus completo
-corpus = read_movie_description(full_metadata_path, full_description_path)
+corpus = create_corpus(full_metadata_path, full_description_path)
 
 # Prendi i primi N
 sample_corpus = corpus[:N]
@@ -56,7 +56,7 @@ class TestIrSystemWithDataFiles(unittest.TestCase):
         self.description_path = "plot_summaries_sample.txt"
 
         # Legge tutto il corpus completo
-        full_corpus = read_movie_description(self.metadata_path, self.description_path)
+        full_corpus = create_corpus(self.metadata_path, self.description_path)
 
         print(f"Documenti caricati: {len(full_corpus)}")
 
@@ -67,7 +67,7 @@ class TestIrSystemWithDataFiles(unittest.TestCase):
         self.part_C = full_corpus[100:150]
 
         # Inizializza il sistema IR con A + B
-        self.ir = IrSystem.from_corpus(self.part_A + self.part_B)
+        self.ir = IrSystem.create_system(self.part_A + self.part_B)
         #print(f"Doc nel sistema IR iniziale: {len(self.ir)}")  # o metodo simile
 
 

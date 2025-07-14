@@ -1,6 +1,10 @@
 import csv
 
 class MovieDescription:
+    """
+    Classe che rappresenta una coppia titolo-descrizione di un film.
+    """
+
     def __init__(self, title: str, description: str) -> None:
         self.title = title
         self.description = description
@@ -8,11 +12,15 @@ class MovieDescription:
     def __repr__(self) -> str:
         return self.title
 
-def read_movie_description(movie_metadata, description_file) -> list[MovieDescription]:
-    '''
-    La funzione che crea il corpus, ogni entry del corpus è la coppia titolo-descrizione
-    '''
+def create_corpus(movie_metadata, description_file) -> list[MovieDescription]:
+    """
+    Crea il corpus di film a partire da due file:
+    - movie_metadata: file TSV che contiene informazioni sui film (compreso l'ID e il titolo)
+    - description_file: file TSV che contiene l'ID del film e la sua descrizione
+    """
+    # dizionario che mapperà l'ID del film al suo titolo
     names = {}
+    # lista finale che conterrà gli oggetti MovieDescription
     corpus = []
     with open(movie_metadata, 'r') as file: 
         movie_names = csv.reader(file, delimiter='\t')
