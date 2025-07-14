@@ -1,7 +1,5 @@
 from ir_system import IrSystem
 from movie_description import *
-import shlex
-import os
 
 def add_document(ir: IrSystem, title: str, description: str):
     """

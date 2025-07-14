@@ -8,13 +8,19 @@ Boolean information retrieval system project focused on the update of the collec
 - **add** and **delete documents**
 - **additional index** to keep the system running while adding documents
 ## How To
-To load the program simply run the `main.py` script. It will ask for data to load:
-```
-load data/movie.metadata.tsv plot_summaries.txt
+To load the program simply run the `main.py` script. To start run:
+```bash
+build data/movie.metadata.tsv plot_summaries.txt
 ```
 This will create the index and save it on disk for future uses.  
 
-To add documents to the index run
+To load the index run:
+```bash
+load index
+```
+This will load the index (previously saved) from disk.
+
+To add documents to the index from files run
 ```bash
 add metadata_file.tsv plot_file.tsv # files containing new data
 ```
@@ -23,18 +29,22 @@ This operation runs on a different thread so queries can be executed in the mean
 
 To delete documents run:
 ```bash
-del 2 4-6 # and so on
+del 1 5 # docID of the documents to delete
+```
+or
+```bash
+del 7-9 # ranges
 ```
 Documents are deleted by DocID in a space separated list. To indicate ranges of documents to delete use the dash `-` as in `A-Z`. This will result in the removal of documents from `A` to `Z` (included).
 
 Queries are performed by typing the words one is searching:
-```
+```bash
 a AND b OR c NOT d
 (a AND b) OR (c NOT d)
 ```
 
 Phrase queries are performed by adding `"` at the end and at the beginning of the query:
-```
+```bash
 "to be or not to be"
 ```
 
