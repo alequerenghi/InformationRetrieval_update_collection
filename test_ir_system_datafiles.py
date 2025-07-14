@@ -2,13 +2,12 @@ from movie_description import create_corpus
 import csv
 import unittest
 from ir_system import IrSystem
-
 from movie_description import create_corpus
 import csv
 
 # File originali
-full_metadata_path = '../Code IR/data/movie.metadata.tsv'
-full_description_path = '../Code IR/data/plot_summaries.txt'
+full_metadata_path = './data/movie.metadata.tsv'
+full_description_path = './data/plot_summaries.txt'
 
 # File di output ridotti
 sample_metadata_path = "movie_metadata_sample.tsv"

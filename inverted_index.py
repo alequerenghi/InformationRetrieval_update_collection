@@ -9,6 +9,8 @@ from functools import lru_cache # per memorizzare i risultati del stemming ed ev
 from nltk.stem import SnowballStemmer # stemmer per ridurre le parole alla loro radice
 from movie_description import MovieDescription
 
+STOP_WORDS = set(get_stop_words('english'))
+
 class InvertedIndex:
     """
     Classe che rappresenta un inverted index:
@@ -35,7 +37,7 @@ class InvertedIndex:
             # per ogni termine
             for token in tokens:  
                 # crea una PostingsList con solo questo documento
-                plist = PostingsList.create_posting_list_form_single_docID(doc_id)
+                plist = PostingsList.create_posting_list_from_single_docID(doc_id)
                 # se contenuto
                 if token in terms:  
                     # aggiunge doc_id alla PostingsList esistente
@@ -64,7 +66,7 @@ class InvertedIndex:
                 # crea il biword concatenando due token consecutivi
                 biword = tokens[i]+tokens[i + 1]
                 # crea una PostingsList con solo questo documento
-                plist = PostingsList.create_posting_list_form_single_docID(doc_id)
+                plist = PostingsList.create_posting_list_from_single_docID(doc_id)
                 # se contenuto
                 if biword in terms:
                     # aggiunge doc_id alla PostingsList esistente
@@ -107,6 +109,7 @@ class InvertedIndex:
                 # aggiunge all'indice filtrato temini e relative PostingList
                 filtered_index[term] = filtered_postings
         # aggiorna l'albero con l'indice filtrato
+        self.btree.clear()
         self.btree.update(filtered_index)
         return self
 
@@ -140,7 +143,7 @@ class InvertedIndex:
         return str(self.btree)
 
 
-def normalize(text):
+def normalize(text: str) -> str:
     """
     Rimuove la punteggiatura e converte il testo in minuscolo.
     """
@@ -154,11 +157,10 @@ def cached_stem(word):
     stemmer = SnowballStemmer("english")
     return stemmer.stem(word)
 
-def tokenize(text):
+def tokenize(text: str) -> list[str]:
     """
     Normalizza il testo, rimuove le stop words e applica lo stemming a ogni parola.
     """
     normalized = normalize(text).split()
-    stop_words = get_stop_words('english')
-    stop_removed = [word for word in normalized if word not in stop_words]
+    stop_removed = [word for word in normalized if word not in STOP_WORDS]
     return [cached_stem(token) for token in stop_removed]

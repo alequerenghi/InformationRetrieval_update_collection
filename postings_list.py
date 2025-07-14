@@ -5,7 +5,7 @@ class PostingsList:
     dove ogni intero è un posting, ovvero il docID di un documento.
     """
     def __init__(self) -> None:
-        self._postings_list = []
+        self._postings_list: list[int] = []
 
     @classmethod
     def create_posting_list(cls, postings_list: list[int]) -> 'PostingsList':
@@ -19,7 +19,7 @@ class PostingsList:
         return plist
 
     @classmethod
-    def create_posting_list_form_single_docID(cls, doc_id: int) -> 'PostingsList':
+    def create_posting_list_from_single_docID(cls, doc_id: int) -> 'PostingsList':
         """
         Crea una PostingsList che contiene un singolo docID.
         """
@@ -53,8 +53,8 @@ class PostingsList:
 
     def get_from_corpus(self, corpus) -> list[str]:
         """
-        Ritorna una lista di stringhe che rappresentano i titoli dei documenti
-        corrispondenti ai docID nella PostingsList.
+        Ritorna una lista di stringhe descrittive per ciascun docID nella lista,
+        nella forma "docID: titolo".
         """
         return list(map(lambda x: str(x) + ": " + str(corpus[x]), self._postings_list))
 

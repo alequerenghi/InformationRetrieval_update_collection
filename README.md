@@ -10,7 +10,7 @@ Boolean information retrieval system project focused on the update of the collec
 ## How To
 To load the program simply run the `main.py` script. To start run:
 ```bash
-build data/movie.metadata.tsv plot_summaries.txt
+build data/movie.metadata.tsv data/plot_summaries.txt
 ```
 This will create the index and save it on disk for future uses.  
 

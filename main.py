@@ -80,7 +80,7 @@ def help_menu():
     print(" - load index")
     print(" - <query>")
     print(' - "<phrase query>"')
-    print(' - add "<title>" "<description>"')
+    print(' - add <title> | <description>')
     print(" - add <titles_file> <descriptions_file>")
     print(" - del <docIDs> (e.g. 'del 1 5' or 'del 7-9')")
     print(" - len index (i.e. index size)")
@@ -192,12 +192,23 @@ def main():
                     print("You must specify a string after 'del'.")
             # comando per aggiungere un singolo documento (titolo + descrizione)
             elif cmd.startswith("add"):
-                parts = user_input.split()
-                if len(parts) != 3:
-                    print("Usage: add <title> <description>")
+                parts = user_input.strip().split(maxsplit=1)
+                if len(parts) < 2:
+                    print("Error: Missing arguments after 'add'.")
+                    return
+                args = parts[1]
+                if '|' in args:
+                    try:
+                        title, description = map(str.strip, args.split('|', 1))
+                        add_document(ir, title, description)
+                    except ValueError:
+                        print("Error: Use '|' to separate title and description.")
                 else:
-                    metadata, description = parts[1:]
-                    add_document(ir, metadata, description)
+                    try:
+                        title_file, description_file = args.split(maxsplit=1)
+                        add_documents(ir, title_file, description_file)
+                    except ValueError:
+                        print("Error: Provide both title_file and description_file.")
             # se il comando non corrisponde a quelli precedenti, lo interpreta come query di ricerca
             else:
                 results = search(cmd, ir)
