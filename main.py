@@ -165,7 +165,7 @@ def main():
         elif cmd == "len index":
             if ir is None:
                 continue
-            print(f"Index size (number of unique terms): {ir._index.__len__()}")
+            print(f"Index size (number of unique terms): {len(ir._index) + (len(ir._aux_idx) if ir._aux_idx else 0)}")
         # comando per caricare un indice già costruito da disco
         elif cmd in ["load index"]:
             ir = load_index()
@@ -195,20 +195,17 @@ def main():
                 parts = user_input.strip().split(maxsplit=1)
                 if len(parts) < 2:
                     print("Error: Missing arguments after 'add'.")
-                    return
+                    continue
                 args = parts[1]
                 if '|' in args:
-                    try:
                         title, description = map(str.strip, args.split('|', 1))
                         add_document(ir, title, description)
-                    except ValueError:
-                        print("Error: Use '|' to separate title and description.")
                 else:
                     try:
                         title_file, description_file = args.split(maxsplit=1)
                         add_documents(ir, title_file, description_file)
-                    except ValueError:
-                        print("Error: Provide both title_file and description_file.")
+                    except FileNotFoundError:
+                        print(f"Error: Files {title_file}, {description_file} not found. To add just one film instead, use '|' to separate title and description.")
             # se il comando non corrisponde a quelli precedenti, lo interpreta come query di ricerca
             else:
                 results = search(cmd, ir)

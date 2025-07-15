@@ -29,7 +29,7 @@ class InvertedIndex:
         # dizionario temporaneo per tenere l'indice che stiamo creando
         terms = {} 
         # per ogni documento
-        for doc_id, content in enumerate(tqdm(corpus, initial=max_size)):
+        for doc_id, content in enumerate(tqdm(corpus), start=max_size):
             # tokenizza la descrizione (normalizzazione + stop word + stemming)
             tokens_list = tokenize(content.description)
             # crea un set per rimuovere i duplicati
@@ -58,7 +58,7 @@ class InvertedIndex:
         # dizionario temporaneo per tenere l'indice che stiamo creando
         terms = {}
         # per ogni documento
-        for doc_id, content in enumerate(tqdm(corpus, initial=max_size)):
+        for doc_id, content in enumerate(tqdm(corpus), start=max_size):
             # normalizza e divide la descrizione in token
             tokens = normalize(content.description).split()
             # per ogni parola
@@ -131,7 +131,6 @@ class InvertedIndex:
         idx = cls()
         idx.btree.update(dictionary)
         return idx
-
 
     def __getitem__(self, key: str) -> PostingsList:
         return self.btree[key]

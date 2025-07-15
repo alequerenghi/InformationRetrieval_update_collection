@@ -24,6 +24,10 @@ To add documents to the index from files run
 ```bash
 add metadata_file.tsv plot_file.tsv # files containing new data
 ```
+To add a single document to the index run
+```bash
+add <title> | <description>
+```
 The added documents will be stored in an additional index until it will grow too big and merged in the main one.  
 This operation runs on a different thread so queries can be executed in the meantime.
 

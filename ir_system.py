@@ -15,7 +15,7 @@ class IrSystem:
     """
 
     def __init__(self, corpus: list[MovieDescription], index: InvertedIndex, biword: InvertedIndex,
-                    invalid_vec: list[bool], max_size_aux=10000) -> None:
+                    invalid_vec: list[bool], max_size_aux=100000) -> None:
         """
         Inizializza il sistema IR con corpus, indice invertito principale e secondario,
         indice biword principale e secondario, vettore di invalidazione e massima dimensione dell'indice ausiliario.
@@ -53,9 +53,9 @@ class IrSystem:
         """
         # crea un InvertedIndex dai nuovi documenti passati,
         # i nuovi docID partiranno dall'ultimo utlizzato (dalla fine del corpus attuale)
-        aux = InvertedIndex.create_idx_from_corpus(new_docs, len(self._invalid_vec) + 1)
+        aux = InvertedIndex.create_idx_from_corpus(new_docs, len(self._invalid_vec))
         # crea anche l'indice biword
-        aux_biword = InvertedIndex.create_biword_from_corpus(new_docs, len(self._invalid_vec) + 1)
+        aux_biword = InvertedIndex.create_biword_from_corpus(new_docs, len(self._invalid_vec))
         # se l'indice ausiliario è vuoto
         if self._aux_idx is None:
             # gli indici appena creati diventano quelli ausiliari
@@ -69,6 +69,7 @@ class IrSystem:
         # se l'indice ausiliario è troppo grande
         if (len(self._aux_idx) > self.max_size_aux):  
             # fa merge con quello principale
+            print("cazzo pazzo")
             self._merge_idx()  
 
         # aumenta l'invalidation bit vector tante volta quante il numero di nuovi documenti aggiunti
@@ -284,7 +285,7 @@ class IrSystem:
             corpus = pickle.load(f)
         index = InvertedIndex.load_idx_from_disk(os.path.join(filepath, "index.pkl"))
         biword = InvertedIndex.load_idx_from_disk(os.path.join(filepath, "biword.pkl"))
-        invalid_vec = [False] * len(index)
+        invalid_vec = [False] * len(corpus)
         ir = cls(corpus, index, biword, invalid_vec)
         return ir
 
