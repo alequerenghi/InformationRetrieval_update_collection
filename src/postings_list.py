@@ -4,6 +4,7 @@ class PostingsList:
     Classe che rappresenta una posting list. Una PostingsList è una lista di interi
     dove ogni intero è un posting, ovvero il docID di un documento.
     """
+
     def __init__(self) -> None:
         self._postings_list: list[int] = []
 
@@ -43,9 +44,9 @@ class PostingsList:
         # start index per la posting list other
         i = 0
         # ultimo docID nella lista corrente
-        last = self._postings_list[-1] 
+        last = self._postings_list[-1]
         # loop su i. Salta i duplicati in 'other' che coincidono con l'ultimo docID di self
-        while(i < len(other._postings_list) and last == other._postings_list[i]):
+        while (i < len(other._postings_list) and last == other._postings_list[i]):
             i += 1
         # aggiunge tutti i restanti docID (quelli non duplicati)
         self._postings_list += other._postings_list[i:]
@@ -73,7 +74,7 @@ class PostingsList:
                 plist.append(self._postings_list[i])
                 i += 1
                 j += 1
-            # altrimenti aumenta il piu piccolo dei due
+            # se questo id è più piccolo aumentalo
             elif self._postings_list[i] <= other._postings_list[j]:
                 i += 1
             # altrimenti aumenta l'altro
@@ -87,18 +88,16 @@ class PostingsList:
         Ritorna una nuova PostingsList con tutti i docID presenti almeno in una delle due liste.
         """
         plist = []
-        # indice riferito a self
-        i = 0  
-        # indice riferito a other
-        j = 0  
+        i = 0  # indice riferito a self
+        j = 0  # indice riferito a other
         # fintanto che gli indici sono più piccoli di entrambe le liste
-        while(i < len(self._postings_list)) and (j < len(other._postings_list)):
+        while (i < len(self._postings_list)) and (j < len(other._postings_list)):
             # Caso docID presente in entrambe: lo aggiunge una sola volta
             if self._postings_list[i] == other._postings_list[j]:
                 plist.append(self._postings_list[i])
                 i += 1
                 j += 1
-            # Caso aggiunta docID solo da self o solo da other: 
+            # Caso aggiunta docID solo da self o solo da other:
             # aggiunge il docID e aumenta il più piccolo
             elif self._postings_list[i] < other._postings_list[j]:
                 plist.append(self._postings_list[i])

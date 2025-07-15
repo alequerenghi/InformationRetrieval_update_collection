@@ -1,20 +1,27 @@
-from ir_system import IrSystem
-from movie_description import *
+from src.ir_system import IrSystem
+from src.movie_description import *
+
 
 def add_document(ir: IrSystem, title: str, description: str):
     """
     Aggiunge un singolo documento all'indice corrente.
     """
-    ir.add_docs(new_docs = [MovieDescription(title, description)])
+    ir.add_docs(new_docs=[MovieDescription(title, description)])
     print("Document successfully added")
+
 
 def add_documents(ir: IrSystem, metadata_file: str, description_file: str):
     """
     Aggiunge più documenti leggendo da file di metadati e descrizioni.
     """
-    corpus = create_corpus(metadata_file, description_file)
-    ir.add_docs(corpus)
-    print("Documents successfully added")
+    try:
+        corpus = create_corpus(metadata_file, description_file)
+        ir.add_docs(corpus)
+        print("Documents successfully added")
+    except FileNotFoundError:
+        print(f"Error: Files {metadata_file}, {description_file} not found." +
+              " To add just one film instead, use '|' to separate title and description.")
+
 
 def delete_documents(docs_to_delete: str, ir: IrSystem) -> None:
     """
@@ -47,7 +54,7 @@ def delete_documents(docs_to_delete: str, ir: IrSystem) -> None:
         print("No valid document IDs to delete")
         return
 
-    # ordina la lista e chiama la funzione di IRSystem che segna, nell'invalid vector, 
+    # ordina la lista e chiama la funzione di IRSystem che segna, nell'invalid vector,
     # i documenti specificati come eliminati.
     ids_list = sorted(ids_to_delete)
     ir.delete_docs(ids_list)
@@ -70,6 +77,7 @@ def delete_documents(docs_to_delete: str, ir: IrSystem) -> None:
         range_strings = [f"{s}-{e}" if s != e else str(s) for s, e in ranges]
         print(f"Deleted documents: {', '.join(range_strings)}")
 
+
 def help_menu():
     """
     Stampa la lista dei comandi disponibili.
@@ -86,6 +94,7 @@ def help_menu():
     print(" - len index (i.e. index size)")
     print(" - exit")
 
+
 def load_index():
     """
     Carica l'indice salvato su disco dalla cartella 'index_files'.
@@ -96,18 +105,26 @@ def load_index():
         print("Index successfully loaded.")
     except Exception as e:
         print(f"Index loading error: {e}")
-        print("Index not found. Type 'build <titles_file> <descriptions_file>' to create it")
+        print(
+            "Index not found. Type 'build <titles_file> <descriptions_file>' to create it")
+        return None
     return ir
+
 
 def build_index(metadata_file, description_file):
     """
     Crea un nuovo indice a partire dai file di metadati e descrizioni.
     """
     print("Creating index and biword index...")
-    corpus = create_corpus(metadata_file, description_file)
-    ir = IrSystem.create_system(corpus)
-    print("Index successfully created.")
+    try:
+        corpus = create_corpus(metadata_file, description_file)
+        ir = IrSystem.create_system(corpus)
+        print("Index successfully created.")
+    except FileNotFoundError:
+        print(f"Files {metadata_file}, {description_file} not found")
+        return None
     return ir
+
 
 def search(query: str, ir: IrSystem):
     """
@@ -121,9 +138,10 @@ def search(query: str, ir: IrSystem):
         phrase = query[1:-1]
         results = ir.phrase_query(phrase)
     else:
-         # query normale
+        # query normale
         results = ir.query(query)
     return results
+
 
 def print_title():
     ascii_art = r"""
@@ -139,6 +157,7 @@ def print_title():
  by Alessandro, Cristina and Gabriele
     """
     print(ascii_art)
+
 
 def main():
     print_title()
@@ -165,7 +184,8 @@ def main():
         elif cmd == "len index":
             if ir is None:
                 continue
-            print(f"Index size (number of unique terms): {len(ir._index) + (len(ir._aux_idx) if ir._aux_idx else 0)}")
+            print(
+                f"Index size (number of unique terms): {len(ir._index) + (len(ir._aux_idx) if ir._aux_idx else 0)}")
         # comando per caricare un indice già costruito da disco
         elif cmd in ["load index"]:
             ir = load_index()
@@ -198,14 +218,11 @@ def main():
                     continue
                 args = parts[1]
                 if '|' in args:
-                        title, description = map(str.strip, args.split('|', 1))
-                        add_document(ir, title, description)
+                    title, description = map(str.strip, args.split('|', 1))
+                    add_document(ir, title, description)
                 else:
-                    try:
-                        title_file, description_file = args.split(maxsplit=1)
-                        add_documents(ir, title_file, description_file)
-                    except FileNotFoundError:
-                        print(f"Error: Files {title_file}, {description_file} not found. To add just one film instead, use '|' to separate title and description.")
+                    title_file, description_file = args.split(maxsplit=1)
+                    add_documents(ir, title_file, description_file)
             # se il comando non corrisponde a quelli precedenti, lo interpreta come query di ricerca
             else:
                 results = search(cmd, ir)
@@ -218,6 +235,7 @@ def main():
         else:
             print("Index not loaded.")
             continue
+
 
 if __name__ == "__main__":
     main()

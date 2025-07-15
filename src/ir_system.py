@@ -1,23 +1,25 @@
 import os
-from movie_description import MovieDescription
-from inverted_index import InvertedIndex, tokenize, normalize
-from postings_list import PostingsList
 from functools import reduce
 import re
 import pickle
 
+from src.movie_description import MovieDescription
+from src.inverted_index import InvertedIndex, tokenize, normalize
+from src.postings_list import PostingsList
+
+
 class IrSystem:
     """
     Sistema di Information Retrieval che gestisce:
-    - indice invertito per ricerca booleana
+    - InvertedIndex per ricerca booleana
     - biword index per le ricerche di frasi
     - documenti cancellati e aggiunti dinamicamente
     """
 
     def __init__(self, corpus: list[MovieDescription], index: InvertedIndex, biword: InvertedIndex,
-                    invalid_vec: list[bool], max_size_aux=100000) -> None:
+                 invalid_vec: list[bool], max_size_aux=80000) -> None:
         """
-        Inizializza il sistema IR con corpus, indice invertito principale e secondario,
+        Inizializza il sistema IR con corpus, InvertedIndex principale e secondario,
         indice biword principale e secondario, vettore di invalidazione e massima dimensione dell'indice ausiliario.
         """
         self._corpus = corpus
@@ -31,7 +33,7 @@ class IrSystem:
     @classmethod
     def create_system(cls, corpus: list[MovieDescription]) -> "IrSystem":
         """
-        Crea un sistema IR generando indice invertito e biword dal corpus e l'invalid vetor relativo.
+        Crea un sistema IR generando InvertedIndex e biword dal corpus e l'invalid vetor relativo.
         """
         index = InvertedIndex.create_idx_from_corpus(corpus)
         biword = InvertedIndex.create_biword_from_corpus(corpus)
@@ -49,35 +51,36 @@ class IrSystem:
 
     def add_docs(self, new_docs: list[MovieDescription]) -> "IrSystem":
         """
-        Aggiunge nuovi documenti al sistema, aggiornando indici ausiliari.
+        Aggiunge nuovi documenti al sistema, aggiornando l'indice ausiliario.
         """
         # crea un InvertedIndex dai nuovi documenti passati,
         # i nuovi docID partiranno dall'ultimo utlizzato (dalla fine del corpus attuale)
-        aux = InvertedIndex.create_idx_from_corpus(new_docs, len(self._invalid_vec))
+        aux = InvertedIndex.create_idx_from_corpus(
+            new_docs, len(self._invalid_vec))
         # crea anche l'indice biword
-        aux_biword = InvertedIndex.create_biword_from_corpus(new_docs, len(self._invalid_vec))
+        aux_biword = InvertedIndex.create_biword_from_corpus(
+            new_docs, len(self._invalid_vec))
         # se l'indice ausiliario è vuoto
         if self._aux_idx is None:
             # gli indici appena creati diventano quelli ausiliari
             self._aux_idx = aux
             self._aux_biword = aux_biword
-        else:  
+        else:
             # altrimenti fa il merge con quelli già presenti
             self._aux_idx.merge(aux)
             self._aux_biword.merge(aux_biword)
 
         # se l'indice ausiliario è troppo grande
-        if (len(self._aux_idx) > self.max_size_aux):  
+        if (len(self._aux_idx) > self.max_size_aux):
             # fa merge con quello principale
-            print("cazzo pazzo")
-            self._merge_idx()  
+            self._merge_idx()
 
         # aumenta l'invalidation bit vector tante volta quante il numero di nuovi documenti aggiunti
         self._invalid_vec += [False] * len(new_docs)
         # aggiunge al corpus i nuovi documenti
         self._corpus += new_docs
         return self
-    
+
     def _merge_idx(self) -> "IrSystem":
         """
         Effettua il merge dell'indice ausiliario con quello principale e rimuove documenti cancellati.
@@ -115,15 +118,15 @@ class IrSystem:
         # converte da infix a postfix (per calcolo più semplice)
         postfixes = infix_to_postfix(tokens)
         # stack per PostingList ancora da processare
-        stack = [] 
+        stack = []
         # lista di PostingList da ottimizzare con AND multipli
         to_optimize = []
         # per ogni token dell’espressione in notazione postfix
         for token in postfixes:
             # Caso in cui il token è l’operatore AND:
-            # per migliorare l’efficienza conviene prima accumulare le due posting list da confrontare,
+            # per migliorare l’efficienza conviene prima accumulare le posting list da confrontare,
             # per poi eseguire l'intersezione fra tutte le liste più corte alla fine (_optimize_and_query)
-            if(token == "AND"):  
+            if (token == "AND"):
                 # estrae la posting list più a destra dallo stack
                 right = stack.pop()
                 # se lo stack non è vuoto, estrae la posting list di sinistra;
@@ -157,18 +160,19 @@ class IrSystem:
             else:
                 # cerca la posting list di quel termine nell’indice principale e in quello ausiliario
                 # se non c'è, usa una lista vuota
-                base = self._index.btree.get(token, PostingsList.create_posting_list([]))
+                base = self._index.btree.get(
+                    token, PostingsList.create_posting_list([]))
                 aux = (self._aux_idx.btree.get(token, PostingsList.create_posting_list([]))
-                        if self._aux_idx
-                        else PostingsList.create_posting_list([])
-                )
+                       if self._aux_idx
+                       else PostingsList.create_posting_list([])
+                       )
                 # controlla se le posting list trovate sono non vuote
                 if base._postings_list:
                     if aux._postings_list:
                         # entrambe le liste hanno risultati: fa il merge per combinarle
                         stack.append(base.merge(aux))
                     else:
-                         # solo la lista principale ha risultati: usa quella
+                        # solo la lista principale ha risultati: usa quella
                         stack.append(base)
                 elif aux._postings_list:
                     # solo la lista ausiliaria ha risultati: usa quella
@@ -221,7 +225,7 @@ class IrSystem:
         biword_query = []
         # normalizza la query
         words = normalize(query).split()
-    
+
         for i in range(len(words) - 1):
             # concatena le parole successive della query per formare le biword
             biword_query.append(words[i] + words[i + 1])
@@ -231,24 +235,25 @@ class IrSystem:
         for biword in biword_query:
             # cerca le biword nell'indice principale e nell'ausiliario
             # se non le trova, ritorna lista vuota
-            base = self._biword.btree.get(biword, PostingsList.create_posting_list([]))
+            base = self._biword.btree.get(
+                biword, PostingsList.create_posting_list([]))
 
             aux = (self._aux_biword.btree.get(biword, PostingsList.create_posting_list([]))
-                    if self._aux_biword
-                    else PostingsList.create_posting_list([])
-            )
+                   if self._aux_biword
+                   else PostingsList.create_posting_list([])
+                   )
             # unisce (merge) le PostingsList dei due indici per la specifica biword
             postings.append(base.merge(aux))
-        
+
         # se non trova risultati restituisce una stringa vuota
         if not postings:
             return []
-        # se trova una sola biword (frase di 2 parole), 
+        # se trova una sola biword (frase di 2 parole),
         # restituisce direttamente i docID dopo aver rimosso i cancellati
         if len(postings) == 1:
             return self._remove_deleted(postings[0]).get_from_corpus(self._corpus)
-        
-        # se invece ci sono più biword, calcola l'intersezione: 
+
+        # se invece ci sono più biword, calcola l'intersezione:
         plist = reduce(lambda x, y: x.intersection(y), postings)
 
         # a questo punto ha una sola PostingsList con i docID validi.
@@ -275,19 +280,25 @@ class IrSystem:
             pickle.dump(self._corpus, f)
 
     @classmethod
-    def load_ir_system_from_disk(cls, filepath: str) -> None:
+    def load_ir_system_from_disk(cls, filepath: str = None) -> None:
         """
         Carica il sistema IR da disco.
         """
         if filepath is None:
             filepath = "index_files"
-        with open(os.path.join(filepath, "corpus.pkl"), "rb") as f: 
+        with open(os.path.join(filepath, "corpus.pkl"), "rb") as f:
             corpus = pickle.load(f)
-        index = InvertedIndex.load_idx_from_disk(os.path.join(filepath, "index.pkl"))
-        biword = InvertedIndex.load_idx_from_disk(os.path.join(filepath, "biword.pkl"))
+        index = InvertedIndex.load_idx_from_disk(
+            os.path.join(filepath, "index.pkl"))
+        biword = InvertedIndex.load_idx_from_disk(
+            os.path.join(filepath, "biword.pkl"))
         invalid_vec = [False] * len(corpus)
         ir = cls(corpus, index, biword, invalid_vec)
         return ir
+
+    def __len__(self):
+        return sum(x.title != "REDACTED" for x in self._corpus)
+
 
 def infix_to_postfix(tokens: list[str]) -> list[str]:
     """
@@ -296,17 +307,17 @@ def infix_to_postfix(tokens: list[str]) -> list[str]:
     """
     # query risultato finale
     output = []
-    # token ancora da processare  
-    stack = []  
+    # token ancora da processare
+    stack = []
     for token in tokens:
         # Caso il token è un operatore
-        if token in ("AND", "OR", "NOT"):  
-            # finchè ci sono token da processare e il token non è una parentesi, nè un NOT
+        if token in ("AND", "OR", "NOT"):
+            # finchè ci sono token da processare e il token non è una parentesi, né un NOT
             while stack and stack[-1] != "(" and token != "NOT":
                 # aggiungi alla query finale un token dopo l'altro
                 output.append(stack.pop())
             # poi aggiungi l'operatore allo stack
-            stack.append(token) 
+            stack.append(token)
         # Caso il token è aperta parentesi
         elif token == "(":
             # aggiungi la parentesi allo stack
@@ -318,13 +329,13 @@ def infix_to_postfix(tokens: list[str]) -> list[str]:
                 # aggiungi all'output il contenuto dello stack
                 output.append(stack.pop())
             # poi rimuovi dallo stak '('
-            stack.pop() 
+            stack.pop()
         # Caso in cui il token è un termine normale (non un operatore)
         else:
             # aggiungi il termine all'outpuit
             output.append(token)
     # svuota lo stack mettendo in output
-    while stack: 
+    while stack:
         output.append(stack.pop())
     return output
 

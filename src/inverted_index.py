@@ -1,15 +1,19 @@
 import re
-from postings_list import PostingsList
 import pickle
-import re
-from tqdm import tqdm # barra di avanzamento per visualizzare lo stato durante la creazione dell'indice
+# barra di avanzamento per visualizzare lo stato durante la creazione dell'indice
+from tqdm import tqdm
 from BTrees._OOBTree import OOBTree
 from stop_words import get_stop_words
-from functools import lru_cache # per memorizzare i risultati del stemming ed evitare calcoli ripetuti
-from nltk.stem import SnowballStemmer # stemmer per ridurre le parole alla loro radice
-from movie_description import MovieDescription
+# per memorizzare i risultati dello stemming ed evitare calcoli ripetuti
+from functools import lru_cache
+# stemmer per ridurre le parole alla loro radice
+from nltk.stem import SnowballStemmer
+
+from src.postings_list import PostingsList
+from src.movie_description import MovieDescription
 
 STOP_WORDS = set(get_stop_words('english'))
+
 
 class InvertedIndex:
     """
@@ -24,28 +28,29 @@ class InvertedIndex:
     @classmethod
     def create_idx_from_corpus(cls, corpus: list[MovieDescription], max_size=0) -> 'InvertedIndex':
         """
-        Crea un indice invertito a partire da un corpus di descrizioni di film.
+        Crea un InvertedIndex a partire da un corpus di descrizioni di film.
         """
         # dizionario temporaneo per tenere l'indice che stiamo creando
-        terms = {} 
+        terms = {}
         # per ogni documento
         for doc_id, content in enumerate(tqdm(corpus), start=max_size):
             # tokenizza la descrizione (normalizzazione + stop word + stemming)
             tokens_list = tokenize(content.description)
             # crea un set per rimuovere i duplicati
-            tokens = set(tokens_list) 
+            tokens = set(tokens_list)
             # per ogni termine
-            for token in tokens:  
+            for token in tokens:
                 # crea una PostingsList con solo questo documento
-                plist = PostingsList.create_posting_list_from_single_docID(doc_id)
+                plist = PostingsList.create_posting_list_from_single_docID(
+                    doc_id)
                 # se contenuto
-                if token in terms:  
+                if token in terms:
                     # aggiunge doc_id alla PostingsList esistente
                     terms[token].merge(plist)
                 else:
                     # altrimenti crea una nuova PostingsList
                     terms[token] = plist
-        # carica tutto nel BTree            
+        # carica tutto nel BTree
         idx = cls()
         idx.btree.update(terms)
         return idx
@@ -66,7 +71,8 @@ class InvertedIndex:
                 # crea il biword concatenando due token consecutivi
                 biword = tokens[i]+tokens[i + 1]
                 # crea una PostingsList con solo questo documento
-                plist = PostingsList.create_posting_list_from_single_docID(doc_id)
+                plist = PostingsList.create_posting_list_from_single_docID(
+                    doc_id)
                 # se contenuto
                 if biword in terms:
                     # aggiunge doc_id alla PostingsList esistente
@@ -74,14 +80,14 @@ class InvertedIndex:
                 else:
                     # altrimenti crea una nuova PostingsList
                     terms[biword] = plist
-        # carica tutto nel BTree 
+        # carica tutto nel BTree
         idx = cls()
         idx.btree.update(terms)
         return idx
 
     def merge(self, other: 'InvertedIndex') -> 'InvertedIndex':
         """
-        Unisce questo indice invertito con un altro.
+        Unisce questo InvertedIndex con un altro.
         """
         for term, postings in other.btree.items():
             if term in self.btree:
@@ -115,7 +121,7 @@ class InvertedIndex:
 
     def write_idx_to_disk(self, filepath: str) -> None:
         """
-        Salva l'indice invertito su disco usando pickle.
+        Salva l'InvertedIndex su disco usando pickle.
         """
         dictionary = dict(self.btree.items())
         with open(filepath, 'wb') as f:
@@ -124,7 +130,7 @@ class InvertedIndex:
     @classmethod
     def load_idx_from_disk(cls, filepath: str) -> 'InvertedIndex':
         """
-        Carica un indice invertito da disco.
+        Carica un InvertedIndex da disco.
         """
         with open(filepath, 'rb') as f:
             dictionary = pickle.load(f)
@@ -148,6 +154,7 @@ def normalize(text: str) -> str:
     """
     return re.sub(r'[^\w\s^-]', '', text).lower()
 
+
 @lru_cache(maxsize=100_000)
 def cached_stem(word):
     """
@@ -155,6 +162,7 @@ def cached_stem(word):
     """
     stemmer = SnowballStemmer("english")
     return stemmer.stem(word)
+
 
 def tokenize(text: str) -> list[str]:
     """
